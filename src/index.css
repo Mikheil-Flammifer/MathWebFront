@@ -353,11 +353,12 @@
   .diff-7 { background: linear-gradient(90deg, rgba(99,102,241,0.15), rgba(167,139,250,0.15)); border: 1px solid rgba(167,139,250,0.3); color: #c4b5fd; }
 
   /* ── Nav item ── */
-  .nav-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-           text-chalk-400 hover:text-chalk-100 hover:bg-space-600
-           transition-all duration-150;
-  }
+   .nav-item {
+      @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+             border border-transparent
+             text-chalk-400 hover:text-chalk-100 hover:bg-space-600
+             transition-all duration-150;
+    }
   .nav-item-active {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
            text-plasma-300 bg-plasma-500/10;
