@@ -1,30 +1,15 @@
-export default function Avatar({ user, size = 'md' }) {
-  const sizes = {
-    sm: 'w-8 h-8 text-xs',
-    md: 'w-10 h-10 text-sm',
-    lg: 'w-14 h-14 text-lg',
-    xl: 'w-20 h-20 text-2xl',
-  }
+import { getAssetUrl, getInitials } from '../../utils/helpers'
 
-  const initials = user
-    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase()
-    : '?'
-
-  if (user?.avatarUrl) {
-    return (
-      <img
-        src={user.avatarUrl}
-        alt={`${user.firstName} ${user.lastName}`}
-        className={`${sizes[size]} rounded-full object-cover`}
-      />
-    )
-  }
-
-  return (
-    <div className={`${sizes[size]} rounded-full bg-primary-600
-                     text-white font-semibold flex items-center
-                     justify-center flex-shrink-0`}>
-      {initials}
-    </div>
+export default function Avatar({ user, className = 'w-9 h-9 text-sm' }) {
+  const src = getAssetUrl(user?.avatarUrl)
+  return src ? (
+    <img src={src} alt="" className={`${className} rounded-full object-cover border border-space-400`} />
+  ) : (
+    <span
+      className={`${className} rounded-full grid place-items-center shrink-0 font-display font-semibold
+                  text-plasma-200 bg-plasma-500/20 border border-plasma-500/30`}
+    >
+      {getInitials(user)}
+    </span>
   )
 }
