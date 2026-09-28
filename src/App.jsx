@@ -1,122 +1,72 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import useAuthStore from './store/authStore'
 
-function App() {
-  const [count, setCount] = useState(0)
+// Auth pages
+import LoginPage from './pages/auth/LoginPage'
+import RegisterPage from './pages/auth/RegisterPage'
+import VerifyOtpPage from './pages/auth/VerifyOtpPage'
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+// Main pages
+import HomePage from './pages/home/HomePage'
+import VideoPlayerPage from './pages/video/VideoPlayerPage'
+import QuestMapPage from './pages/quest/QuestMapPage'
+import QuestDetailPage from './pages/quest/QuestDetailPage'
+import ProblemPage from './pages/problem/ProblemPage'
+import ProfilePage from './pages/profile/ProfilePage'
+import SubscriptionPage from './pages/subscription/SubscriptionPage'
 
-      <div className="ticks"></div>
+// Layout
+import MainLayout from './components/layout/MainLayout'
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+// Protected route wrapper
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
-export default App
+// Public only route (redirect if logged in)
+const PublicRoute = ({ children }) => {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  return !isAuthenticated ? children : <Navigate to="/home" replace />
+}
+
+export default function App() {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="/login" element={
+        <PublicRoute><LoginPage /></PublicRoute>
+      } />
+      <Route path="/register" element={
+        <PublicRoute><RegisterPage /></PublicRoute>
+      } />
+      <Route path="/verify-otp" element={<VerifyOtpPage />} />
+      <Route path="/forgot-password" element={
+        <PublicRoute><ForgotPasswordPage /></PublicRoute>
+      } />
+      <Route path="/reset-password" element={
+        <PublicRoute><ResetPasswordPage /></PublicRoute>
+      } />
+
+      {/* Protected routes with layout */}
+      <Route element={
+        <ProtectedRoute><MainLayout /></ProtectedRoute>
+      }>
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/videos/:id" element={<VideoPlayerPage />} />
+        <Route path="/quests" element={<QuestMapPage />} />
+        <Route path="/quests/:id" element={<QuestDetailPage />} />
+        <Route path="/quests/:questId/problems/:problemId"
+               element={<ProblemPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/subscribe" element={<SubscriptionPage />} />
+      </Route>
+
+      {/* Catch all */}
+      <Route path="*" element={<Navigate to="/home" replace />} />
+    </Routes>
+  )
+}
