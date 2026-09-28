@@ -1,48 +1,74 @@
-export default function AuthLayout({ title, subtitle, children }) {
+import { Route, Sparkles, Layers, PlayCircle } from 'lucide-react'
+import Logo from '../common/Logo'
+
+const symbols = [
+  { s: '∑', top: '9%',  left: '10%', size: 'text-6xl', r: '-8deg', d: '0s' },
+  { s: 'π', top: '20%', left: '72%', size: 'text-7xl', r: '10deg', d: '1.2s' },
+  { s: '∫', top: '50%', left: '6%',  size: 'text-8xl', r: '6deg',  d: '2.1s' },
+  { s: '√', top: '60%', left: '66%', size: 'text-6xl', r: '-6deg', d: '0.6s' },
+  { s: '∞', top: '84%', left: '30%', size: 'text-7xl', r: '4deg',  d: '1.8s' },
+]
+
+const perks = [
+  { icon: Route,      text: 'Quest maps that unlock as you learn' },
+  { icon: PlayCircle, text: 'Video lessons with a real discussion' },
+  { icon: Layers,     text: '7 difficulty levels, Beginner to Master' },
+]
+
+export default function AuthLayout({ title, subtitle, children, footer }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-grid">
-      {/* Ambient glow */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-        <div style={{
-          position:'absolute', top:'-15%', left:'-5%',
-          width:'600px', height:'600px', borderRadius:'50%',
-          background:'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 65%)',
-        }}/>
-        <div style={{
-          position:'absolute', bottom:'-20%', right:'-5%',
-          width:'500px', height:'500px', borderRadius:'50%',
-          background:'radial-gradient(circle, rgba(67,56,202,0.07) 0%, transparent 65%)',
-        }}/>
-      </div>
+    <div className="min-h-screen grid lg:grid-cols-[1.05fr_1fr]">
+      {/* Brand panel */}
+      <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden p-12 border-r border-space-500 bg-space-800/70">
+        <div className="absolute inset-0 bg-grid opacity-60" />
+        <div className="absolute -top-32 -left-24 w-[28rem] h-[28rem] rounded-full bg-plasma-500/10 blur-3xl" />
 
-      <div className="w-full max-w-md relative animate-fade-in">
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-8 justify-center">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-lg font-bold font-display select-none"
-            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)', boxShadow: '0 0 16px rgba(99,102,241,0.4)' }}>
-            ∑
-          </div>
-          <span className="text-xl font-semibold font-display text-chalk-50 tracking-tight">
-            MathWeb
+        {symbols.map(({ s, top, left, size, r, d }) => (
+          <span
+            key={s}
+            aria-hidden
+            className={`absolute font-display ${size} text-plasma-400/15 select-none animate-float`}
+            style={{ top, left, '--r': r, animationDelay: d }}
+          >
+            {s}
           </span>
+        ))}
+
+        <div className="relative"><Logo size="lg" /></div>
+
+        <div className="relative max-w-md">
+          <span className="badge-plasma mb-5"><Sparkles size={12} /> Learn math like a game</span>
+          <h2 className="text-4xl font-semibold leading-tight text-chalk-50 mb-4">
+            Every equation is a <span className="text-glow-plasma">quest</span> waiting to be solved.
+          </h2>
+          <p className="text-chalk-400 mb-8">
+            Watch, practice and level up through a map of problems built for how you actually learn.
+          </p>
+          <ul className="space-y-3">
+            {perks.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-center gap-3 text-sm text-chalk-300">
+                <span className="w-8 h-8 rounded-lg grid place-items-center bg-plasma-500/10 border border-plasma-500/20 text-plasma-300">
+                  <Icon size={15} />
+                </span>
+                {text}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* Card */}
-        <div className="rounded-2xl p-8 border border-space-500 glass">
-          <h1 className="text-2xl font-semibold font-display text-chalk-50 tracking-tight mb-1">
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="text-sm text-chalk-500 mb-6">{subtitle}</p>
-          )}
-          <div className="accent-rule mb-6" />
+        <div className="relative eq-block text-base">e^(iπ) + 1 = 0</div>
+      </aside>
+
+      {/* Form panel */}
+      <main className="flex items-center justify-center p-6 sm:p-10">
+        <div className="w-full max-w-md animate-slide-up">
+          <div className="lg:hidden mb-8"><Logo /></div>
+          <h1 className="page-title mb-2">{title}</h1>
+          <p className="text-chalk-400 mb-8">{subtitle}</p>
           {children}
+          {footer && <div className="mt-8 text-sm text-chalk-400 text-center">{footer}</div>}
         </div>
-
-        <p className="text-center text-xs text-chalk-600 mt-6">
-          © {new Date().getFullYear()} MathWeb — Learn mathematics, step by step.
-        </p>
-      </div>
+      </main>
     </div>
   )
 }

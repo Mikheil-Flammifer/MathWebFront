@@ -1,54 +1,43 @@
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Eye, EyeOff, KeyRound } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Mail, Lock, ArrowLeft } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { authApi } from '../../api/authApi'
 import AuthLayout from '../../components/layout/AuthLayout'
-import toast from 'react-hot-toast'
+import FormField from '../../components/common/FormField'
+import OtpInput from '../../components/common/OtpInput'
+import SubmitButton from '../../components/common/SubmitButton'
+import { getErrorMessage } from '../../utils/helpers'
+import { PENDING_EMAIL_KEY } from '../../utils/constants'
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const email = searchParams.get('email') || ''
-
-  const [form, setForm] = useState({
-    code: '',
-    newPassword: '',
-    confirmPassword: '',
-  })
-  const [showPassword, setShowPassword] = useState(false)
+  const location = useLocation()
+  const [email, setEmail] = useState(location.state?.email || sessionStorage.getItem(PENDING_EMAIL_KEY) || '')
+  const [otp, setOtp] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-    setError('')
-  }
-
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault()
-    setError('')
-
-    if (form.newPassword !== form.confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
-    if (form.newPassword.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
+    const er = {}
+    if (!/^\S+@\S+\.\S+$/.test(email)) er.email = 'Enter a valid email'
+    if (otp.length !== 6) er.otp = 'Enter the 6-digit code'
+    if (password.length < 8) er.password = 'At least 8 characters'
+    if (confirm !== password) er.confirm = 'Passwords do not match'
+    setErrors(er)
+    if (Object.keys(er).length) return
 
     setLoading(true)
     try {
-      await authApi.resetPassword({
-        email,
-        code: form.code,
-        newPassword: form.newPassword,
-      })
-      toast.success('Password reset successfully!')
-      navigate('/login')
+      await authApi.resetPassword({ email: email.trim(), otp, newPassword: password })
+      sessionStorage.removeItem(PENDING_EMAIL_KEY)
+      toast.success('Password updated. Sign in with your new password.')
+      navigate('/login', { replace: true })
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to reset password')
+      toast.error(getErrorMessage(err, 'Could not reset password'))
     } finally {
       setLoading(false)
     }
@@ -56,102 +45,27 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthLayout
-      title="Reset password"
-      subtitle="Enter the code from your email and your new password"
+      title="Set a new password"
+      subtitle="Enter the code we emailed you and choose a new password."
+      footer={<Link to="/login" className="inline-flex items-center gap-1.5 hover:text-chalk-100"><ArrowLeft size={14} /> Back to sign in</Link>}
     >
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700
-                        px-4 py-3 rounded-lg mb-5 text-sm">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Reset Code
-          </label>
-          <input
-            type="text"
-            name="code"
-            value={form.code}
-            onChange={handleChange}
-            placeholder="6-digit code"
-            maxLength={6}
-            required
-            className="input-field text-center text-xl
-                       tracking-widest font-bold"
-          />
-        </div>
+      <form onSubmit={submit} className="space-y-5" noValidate>
+        <FormField id="email" label="Email" icon={Mail} type="email" value={email}
+          onChange={(e) => setEmail(e.target.value)} error={errors.email} />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            New Password
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="newPassword"
-              value={form.newPassword}
-              onChange={handleChange}
-              placeholder="Min. 8 characters"
-              required
-              className="input-field pr-12"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2
-                         text-gray-400 hover:text-gray-600"
-            >
-              {showPassword
-                ? <EyeOff className="w-5 h-5" />
-                : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
+          <label className="input-label">Reset code</label>
+          <OtpInput value={otp} onChange={setOtp} />
+          {errors.otp && <p className="input-error">{errors.otp}</p>}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Confirm Password
-          </label>
-          <input
-            type="password"
-            name="confirmPassword"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            placeholder="••••••••"
-            required
-            className="input-field"
-          />
-        </div>
+        <FormField id="password" label="New password" icon={Lock} type="password" autoComplete="new-password"
+          value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} />
+        <FormField id="confirm" label="Confirm new password" icon={Lock} type="password" autoComplete="new-password"
+          value={confirm} onChange={(e) => setConfirm(e.target.value)} error={errors.confirm} />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-primary w-full flex items-center
-                     justify-center gap-2"
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-white
-                            border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <KeyRound className="w-5 h-5" />
-              Reset Password
-            </>
-          )}
-        </button>
+        <SubmitButton loading={loading}>Update password</SubmitButton>
       </form>
-
-      <p className="text-center text-sm text-gray-500 mt-6">
-        <Link
-          to="/login"
-          className="text-primary-600 font-medium hover:text-primary-700"
-        >
-          ← Back to login
-        </Link>
-      </p>
     </AuthLayout>
   )
 }

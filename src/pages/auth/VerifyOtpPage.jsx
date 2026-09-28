@@ -1,188 +1,99 @@
-import { useState, useRef, useEffect } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { ShieldCheck } from 'lucide-react'
-import { authApi } from '../../api/authApi'
-import AuthLayout from '../../components/layout/AuthLayout'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { authApi } from '../../api/authApi'
+import useAuthStore from '../../store/authStore'
+import AuthLayout from '../../components/layout/AuthLayout'
+import OtpInput from '../../components/common/OtpInput'
+import SubmitButton from '../../components/common/SubmitButton'
+import { getErrorMessage } from '../../utils/helpers'
+import { PENDING_EMAIL_KEY } from '../../utils/constants'
 
 export default function VerifyOtpPage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const email = searchParams.get('email') || ''
-  const purpose = searchParams.get('purpose') || 'EMAIL_VERIFICATION'
+  const location = useLocation()
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const email = location.state?.email || sessionStorage.getItem(PENDING_EMAIL_KEY)
 
-  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
-  const [resending, setResending] = useState(false)
   const [error, setError] = useState('')
-  const [countdown, setCountdown] = useState(0)
+  const [cooldown, setCooldown] = useState(0)
 
-  const inputRefs = useRef([])
-
-  // Countdown timer for resend
   useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [countdown])
+    if (!email) navigate('/register', { replace: true })
+  }, [email, navigate])
 
-  const handleChange = (index, value) => {
-    if (!/^\d*$/.test(value)) return
-    const newOtp = [...otp]
-    newOtp[index] = value.slice(-1)
-    setOtp(newOtp)
-    setError('')
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
 
-    // Auto-focus next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus()
-    }
-  }
-
-  const handleKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus()
-    }
-  }
-
-  const handlePaste = (e) => {
-    e.preventDefault()
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    const newOtp = [...otp]
-    pasted.split('').forEach((char, i) => {
-      if (i < 6) newOtp[i] = char
-    })
-    setOtp(newOtp)
-    inputRefs.current[Math.min(pasted.length, 5)]?.focus()
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    const code = otp.join('')
-    if (code.length !== 6) {
-      setError('Please enter the complete 6-digit code')
-      return
-    }
-
+  const verify = async (code) => {
+    if (loading || code.length !== 6) return
     setLoading(true)
+    setError('')
     try {
-      await authApi.verifyOtp({ email, code, purpose })
-      toast.success('Email verified successfully!')
-      navigate('/login')
+      const { data } = await authApi.verifyOtp({ email, otp: code })
+      sessionStorage.removeItem(PENDING_EMAIL_KEY)
+      const d = data.data
+      if (d?.accessToken) {
+        // backend logged us in right after verification
+        setAuth(d.user, d.accessToken, d.refreshToken)
+        toast.success('Email verified. Welcome to MathWeb!')
+        navigate('/home', { replace: true })
+      } else {
+        toast.success('Email verified. You can sign in now.')
+        navigate('/login', { replace: true })
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid OTP code')
-      setOtp(['', '', '', '', '', ''])
-      inputRefs.current[0]?.focus()
+      setError(getErrorMessage(err, 'Invalid or expired code'))
+      setOtp('')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleResend = async () => {
-    setResending(true)
+  // auto-submit when all 6 digits are in
+  useEffect(() => {
+    if (otp.length === 6) verify(otp)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp])
+
+  const resend = async () => {
     try {
-      await authApi.resendOtp({ email, purpose })
-      toast.success('New OTP sent to your email!')
-      setCountdown(60)
-      setOtp(['', '', '', '', '', ''])
-      inputRefs.current[0]?.focus()
+      await authApi.resendOtp(email)
+      toast.success('New code sent')
+      setCooldown(60)
+      setError('')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to resend OTP')
-    } finally {
-      setResending(false)
+      toast.error(getErrorMessage(err, 'Could not resend code'))
     }
   }
 
+  if (!email) return null
+
   return (
     <AuthLayout
-      title="Verify your email"
-      subtitle={`Enter the 6-digit code sent to ${email}`}
+      title="Check your email"
+      subtitle={<>We sent a 6-digit code to <span className="text-chalk-100 font-medium">{email}</span>. It expires in 10 minutes.</>}
+      footer={<Link to="/login" className="inline-flex items-center gap-1.5 hover:text-chalk-100"><ArrowLeft size={14} /> Back to sign in</Link>}
     >
-      <div className="flex justify-center mb-6">
-        <div className="w-16 h-16 bg-primary-100 rounded-full
-                        flex items-center justify-center">
-          <ShieldCheck className="w-8 h-8 text-primary-600" />
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700
-                        px-4 py-3 rounded-lg mb-5 text-sm text-center">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        {/* OTP inputs */}
-        <div className="flex justify-center gap-3 mb-6"
-             onPaste={handlePaste}>
-          {otp.map((digit, index) => (
-            <input
-              key={index}
-              ref={(el) => (inputRefs.current[index] = el)}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              className={`w-12 h-14 text-center text-2xl font-bold
-                         border-2 rounded-xl outline-none transition
-                         ${digit
-                           ? 'border-primary-500 bg-primary-50 text-primary-700'
-                           : 'border-gray-200 focus:border-primary-400'
-                         }`}
-            />
-          ))}
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading || otp.join('').length !== 6}
-          className="btn-primary w-full flex items-center
-                     justify-center gap-2"
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-white
-                            border-t-transparent rounded-full animate-spin" />
+      <form onSubmit={(e) => { e.preventDefault(); verify(otp) }} className="space-y-6">
+        {error && <div className="alert-error"><AlertCircle size={16} className="mt-0.5 shrink-0" />{error}</div>}
+        <OtpInput value={otp} onChange={setOtp} disabled={loading} />
+        <SubmitButton loading={loading} disabled={otp.length !== 6}>Verify email</SubmitButton>
+        <p className="text-sm text-chalk-400 text-center">
+          Didn't get it?{' '}
+          {cooldown > 0 ? (
+            <span className="text-chalk-500">Resend in {cooldown}s</span>
           ) : (
-            <>
-              <ShieldCheck className="w-5 h-5" />
-              Verify Email
-            </>
+            <button type="button" onClick={resend} className="text-plasma-300 hover:text-plasma-200 font-medium">Resend code</button>
           )}
-        </button>
-      </form>
-
-      <div className="text-center mt-6">
-        <p className="text-sm text-gray-500 mb-2">
-          Didn't receive the code?
         </p>
-        {countdown > 0 ? (
-          <p className="text-sm text-gray-400">
-            Resend in <span className="font-medium text-primary-600">
-              {countdown}s
-            </span>
-          </p>
-        ) : (
-          <button
-            onClick={handleResend}
-            disabled={resending}
-            className="text-sm text-primary-600 font-medium
-                       hover:text-primary-700 disabled:opacity-50"
-          >
-            {resending ? 'Sending...' : 'Resend OTP'}
-          </button>
-        )}
-      </div>
-
-      <div className="text-center mt-4">
-        <Link to="/login"
-              className="text-sm text-gray-500 hover:text-gray-700">
-          ← Back to login
-        </Link>
-      </div>
+      </form>
     </AuthLayout>
   )
 }

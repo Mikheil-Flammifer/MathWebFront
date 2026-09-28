@@ -78,6 +78,11 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+  50%      { transform: translateY(-14px) rotate(var(--r, 0deg)); }
+}
+
 /* ─── Base ─────────────────────────────────────────────────────────────────── */
 @layer base {
   *, *::before, *::after {
@@ -338,14 +343,15 @@
     border: 1px solid rgba(99,102,241,0.2);
   }
 
- /* ── Difficulty pills ── */
-  .diff-beginner     { @apply text-emerald-400; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); }
-  .diff-elementary   { @apply text-sky-400;     background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.2); }
-  .diff-intermediate { @apply text-amber-400;   background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
-  .diff-advanced     { @apply text-orange-400;  background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.2); }
-  .diff-expert       { @apply text-red-400;     background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.2); }
-  .diff-master       { @apply text-plasma-300;  background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); }
-  .diff-grandmaster  { background: linear-gradient(90deg,rgba(99,102,241,0.15),rgba(167,139,250,0.15)); border: 1px solid rgba(167,139,250,0.3); color: #c4b5fd; }
+  /* ── Difficulty pills (1 = easiest → 7 = hardest) ── */
+  .diff-1 { @apply text-emerald-400; background: rgba(16,185,129,0.1);  border: 1px solid rgba(16,185,129,0.2); }
+  .diff-2 { @apply text-sky-400;     background: rgba(56,189,248,0.1);  border: 1px solid rgba(56,189,248,0.2); }
+  .diff-3 { @apply text-amber-400;   background: rgba(245,158,11,0.1);  border: 1px solid rgba(245,158,11,0.2); }
+  .diff-4 { @apply text-orange-400;  background: rgba(251,146,60,0.1);  border: 1px solid rgba(251,146,60,0.2); }
+  .diff-5 { @apply text-red-400;     background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.2); }
+  .diff-6 { @apply text-plasma-300;  background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); }
+  .diff-7 { background: linear-gradient(90deg, rgba(99,102,241,0.15), rgba(167,139,250,0.15)); border: 1px solid rgba(167,139,250,0.3); color: #c4b5fd; }
+
   /* ── Nav item ── */
   .nav-item {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
@@ -395,6 +401,7 @@
 @layer utilities {
   .font-display { font-family: var(--font-display); }
   .font-body    { font-family: var(--font-body); }
+  .animate-float { animation: float 7s ease-in-out infinite; }
 
   .text-glow-plasma {
     text-shadow: 0 0 20px rgba(99,102,241,0.6);

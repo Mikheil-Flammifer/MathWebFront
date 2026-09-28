@@ -1,70 +1,74 @@
-import axios from 'axios';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY } from '../utils/constants';
+import axios from 'axios'
+import useAuthStore from '../store/authStore'
+import { API_BASE_URL } from '../utils/constants'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+})
 
-// Request interceptor — add token to every request
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// ── Attach access token ─────────────────────────────────────────────
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().token
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
 
-// Response interceptor — handle 401 and refresh token
+// ── Refresh on 401 (one refresh at a time, others wait) ─────────────
+let isRefreshing = false
+let waiting = []
+
+const flushQueue = (error, token = null) => {
+  waiting.forEach(({ resolve, reject }) => (error ? reject(error) : resolve(token)))
+  waiting = []
+}
+
+// Login / register / OTP etc. return 401 for bad input. That is NOT an expired session.
+const isAuthEndpoint = (url = '') => url.includes('/api/auth/')
+
 api.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   async (error) => {
-    const originalRequest = error.config;
+    const original = error.config
+    const status = error.response?.status
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    if (status !== 401 || !original || original._retry || isAuthEndpoint(original.url)) {
+      return Promise.reject(error)
+    }
+    original._retry = true
 
-      try {
-        const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-        if (!refreshToken) {
-          clearAuthAndRedirect();
-          return Promise.reject(error);
-        }
-
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`,
-          { refreshToken }
-        );
-
-        const { accessToken, refreshToken: newRefreshToken } =
-          response.data.data;
-
-        localStorage.setItem(TOKEN_KEY, accessToken);
-        localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
-
-      } catch (refreshError) {
-        clearAuthAndRedirect();
-        return Promise.reject(refreshError);
-      }
+    const { refreshToken, setTokens, logout } = useAuthStore.getState()
+    if (!refreshToken) {
+      logout()
+      return Promise.reject(error)
     }
 
-    return Promise.reject(error);
+    // Another request is already refreshing: wait for it, then retry
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => waiting.push({ resolve, reject })).then(
+        (token) => {
+          original.headers.Authorization = `Bearer ${token}`
+          return api(original)
+        }
+      )
+    }
+
+    isRefreshing = true
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken })
+      const { accessToken, refreshToken: newRefresh } = data.data
+      setTokens(accessToken, newRefresh ?? refreshToken)
+      flushQueue(null, accessToken)
+      original.headers.Authorization = `Bearer ${accessToken}`
+      return api(original)
+    } catch (refreshError) {
+      flushQueue(refreshError)
+      logout() // ProtectedRoute reacts to the store and redirects to /login, no page reload
+      return Promise.reject(refreshError)
+    } finally {
+      isRefreshing = false
+    }
   }
-);
+)
 
-const clearAuthAndRedirect = () => {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem('mathweb_user');
-  window.location.href = '/login';
-};
-
-export default api;
+export default api
