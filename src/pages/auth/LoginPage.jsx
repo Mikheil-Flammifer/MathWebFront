@@ -1,39 +1,44 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { authApi } from '../../api/authApi'
 import useAuthStore from '../../store/authStore'
 import AuthLayout from '../../components/layout/AuthLayout'
-import toast from 'react-hot-toast'
+import FormField from '../../components/common/FormField'
+import SubmitButton from '../../components/common/SubmitButton'
+import { getErrorMessage } from '../../utils/helpers'
+import { PENDING_EMAIL_KEY } from '../../utils/constants'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { setAuth } = useAuthStore()
-
-  const [form, setForm] = useState({ email: '', password: '' })
-  const [showPassword, setShowPassword] = useState(false)
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-    setError('')
-  }
-
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault()
+    if (!email.trim() || !password) return setError('Enter your email and password')
     setLoading(true)
     setError('')
-
     try {
-      const res = await authApi.login(form)
-      const { accessToken, refreshToken, user } = res.data.data
+      const { data } = await authApi.login({ email: email.trim(), password })
+      const { accessToken, refreshToken, user } = data.data
       setAuth(user, accessToken, refreshToken)
       toast.success(`Welcome back, ${user.firstName}!`)
-      navigate('/home')
+      navigate('/home', { replace: true })
     } catch (err) {
-      const msg = err.response?.data?.message || 'Login failed'
-      setError(msg)
+      const msg = getErrorMessage(err, 'Login failed')
+      // Account exists but email not verified yet: send them to OTP
+      if (err.response?.status === 403 && /verif/i.test(msg)) {
+        sessionStorage.setItem(PENDING_EMAIL_KEY, email.trim())
+        toast(msg)
+        navigate('/verify-otp', { state: { email: email.trim() } })
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }
@@ -42,93 +47,25 @@ export default function LoginPage() {
   return (
     <AuthLayout
       title="Welcome back"
-      subtitle="Sign in to continue learning"
+      subtitle="Sign in to continue your quest."
+      footer={<>New here? <Link to="/register" className="text-plasma-300 hover:text-plasma-200 font-medium">Create an account</Link></>}
     >
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700
-                        px-4 py-3 rounded-lg mb-5 text-sm">
-          {error}
-        </div>
-      )}
+      <form onSubmit={submit} className="space-y-5" noValidate>
+        {error && <div className="alert-error"><AlertCircle size={16} className="mt-0.5 shrink-0" />{error}</div>}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="your@email.com"
-            required
-            className="input-field"
-          />
-        </div>
+        <FormField id="email" label="Email" icon={Mail} type="email" autoComplete="email"
+          placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Password
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-              className="input-field pr-12"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2
-                         text-gray-400 hover:text-gray-600"
-            >
-              {showPassword
-                ? <EyeOff className="w-5 h-5" />
-                : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-          <div className="flex justify-end mt-1">
-            <Link
-              to="/forgot-password"
-              className="text-sm text-primary-600 hover:text-primary-700"
-            >
-              Forgot password?
-            </Link>
+          <FormField id="password" label="Password" icon={Lock} type="password" autoComplete="current-password"
+            placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <div className="text-right mt-2">
+            <Link to="/forgot-password" className="text-xs text-chalk-400 hover:text-plasma-300">Forgot password?</Link>
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-primary w-full flex items-center
-                     justify-center gap-2"
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-white
-                            border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <LogIn className="w-5 h-5" />
-              Sign In
-            </>
-          )}
-        </button>
+        <SubmitButton loading={loading}>Sign in <ArrowRight size={16} /></SubmitButton>
       </form>
-
-      <p className="text-center text-sm text-gray-500 mt-6">
-        Don't have an account?{' '}
-        <Link
-          to="/register"
-          className="text-primary-600 font-medium hover:text-primary-700"
-        >
-          Sign up
-        </Link>
-      </p>
     </AuthLayout>
   )
 }

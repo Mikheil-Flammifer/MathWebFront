@@ -1,190 +1,106 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, UserPlus } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { authApi } from '../../api/authApi'
 import AuthLayout from '../../components/layout/AuthLayout'
-import toast from 'react-hot-toast'
+import FormField from '../../components/common/FormField'
+import SubmitButton from '../../components/common/SubmitButton'
+import { getErrorMessage } from '../../utils/helpers'
+import { PENDING_EMAIL_KEY } from '../../utils/constants'
+
+const strengthScore = (pw) =>
+  [pw.length >= 8, /[a-z]/.test(pw) && /[A-Z]/.test(pw), /\d/.test(pw), /[^A-Za-z0-9]/.test(pw)].filter(Boolean).length
+
+const strengthColors = ['bg-red-500', 'bg-amber-500', 'bg-sky-400', 'bg-emerald-500']
+const strengthLabels = ['Weak', 'Fair', 'Good', 'Strong']
 
 export default function RegisterPage() {
   const navigate = useNavigate()
-
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  })
-  const [showPassword, setShowPassword] = useState(false)
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirm: '' })
+  const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-    setError('')
+  const set = (k) => (e) => {
+    setForm((f) => ({ ...f, [k]: e.target.value }))
+    setErrors((er) => ({ ...er, [k]: undefined }))
   }
 
-  const handleSubmit = async (e) => {
+  const validate = () => {
+    const er = {}
+    if (!form.firstName.trim()) er.firstName = 'Required'
+    if (!form.lastName.trim()) er.lastName = 'Required'
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) er.email = 'Enter a valid email'
+    if (form.password.length < 8) er.password = 'At least 8 characters'
+    if (form.confirm !== form.password) er.confirm = 'Passwords do not match'
+    setErrors(er)
+    return Object.keys(er).length === 0
+  }
+
+  const submit = async (e) => {
     e.preventDefault()
-    setError('')
-
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
-    if (form.password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
-
+    if (!validate()) return
     setLoading(true)
     try {
+      const email = form.email.trim()
       await authApi.register({
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email,
         password: form.password,
       })
-      toast.success('Registration successful! Check your email for OTP.')
-      navigate(`/verify-otp?email=${encodeURIComponent(form.email)}&purpose=EMAIL_VERIFICATION`)
+      sessionStorage.setItem(PENDING_EMAIL_KEY, email)
+      toast.success('Account created. Check your email for the code.')
+      navigate('/verify-otp', { state: { email } })
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed')
+      // Spring validation usually puts field errors in data.data
+      const fe = err.response?.data?.data
+      if (fe && typeof fe === 'object' && !Array.isArray(fe)) setErrors(fe)
+      toast.error(getErrorMessage(err, 'Registration failed'))
     } finally {
       setLoading(false)
     }
   }
 
+  const score = strengthScore(form.password)
+
   return (
     <AuthLayout
-      title="Create account"
-      subtitle="Start your math learning journey"
+      title="Create your account"
+      subtitle="Start solving. It takes less than a minute."
+      footer={<>Already have an account? <Link to="/login" className="text-plasma-300 hover:text-plasma-200 font-medium">Sign in</Link></>}
     >
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700
-                        px-4 py-3 rounded-lg mb-5 text-sm">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={submit} className="space-y-5" noValidate>
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium
-                               text-gray-700 mb-1">
-              First Name
-            </label>
-            <input
-              type="text"
-              name="firstName"
-              value={form.firstName}
-              onChange={handleChange}
-              placeholder="John"
-              required
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium
-                               text-gray-700 mb-1">
-              Last Name
-            </label>
-            <input
-              type="text"
-              name="lastName"
-              value={form.lastName}
-              onChange={handleChange}
-              placeholder="Doe"
-              required
-              className="input-field"
-            />
-          </div>
+          <FormField id="firstName" label="First name" icon={User} autoComplete="given-name"
+            value={form.firstName} onChange={set('firstName')} error={errors.firstName} />
+          <FormField id="lastName" label="Last name" autoComplete="family-name"
+            value={form.lastName} onChange={set('lastName')} error={errors.lastName} />
         </div>
+
+        <FormField id="email" label="Email" icon={Mail} type="email" autoComplete="email"
+          placeholder="you@example.com" value={form.email} onChange={set('email')} error={errors.email} />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="your@email.com"
-            required
-            className="input-field"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Password
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Min. 8 characters"
-              required
-              className="input-field pr-12"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2
-                         text-gray-400 hover:text-gray-600"
-            >
-              {showPassword
-                ? <EyeOff className="w-5 h-5" />
-                : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Confirm Password
-          </label>
-          <input
-            type="password"
-            name="confirmPassword"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            placeholder="••••••••"
-            required
-            className="input-field"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-primary w-full flex items-center
-                     justify-center gap-2 mt-2"
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-white
-                            border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <UserPlus className="w-5 h-5" />
-              Create Account
-            </>
+          <FormField id="password" label="Password" icon={Lock} type="password" autoComplete="new-password"
+            value={form.password} onChange={set('password')} error={errors.password} />
+          {form.password && (
+            <div className="mt-2.5 flex items-center gap-3">
+              <div className="flex-1 grid grid-cols-4 gap-1.5">
+                {[0, 1, 2, 3].map((i) => (
+                  <span key={i} className={`h-1 rounded-full transition-colors ${i < score ? strengthColors[score - 1] : 'bg-space-500'}`} />
+                ))}
+              </div>
+              <span className="text-xs text-chalk-400 w-12 text-right">{strengthLabels[Math.max(score - 1, 0)]}</span>
+            </div>
           )}
-        </button>
-      </form>
+        </div>
 
-      <p className="text-center text-sm text-gray-500 mt-6">
-        Already have an account?{' '}
-        <Link
-          to="/login"
-          className="text-primary-600 font-medium hover:text-primary-700"
-        >
-          Sign in
-        </Link>
-      </p>
+        <FormField id="confirm" label="Confirm password" icon={Lock} type="password" autoComplete="new-password"
+          value={form.confirm} onChange={set('confirm')} error={errors.confirm} />
+
+        <SubmitButton loading={loading}>Create account <ArrowRight size={16} /></SubmitButton>
+      </form>
     </AuthLayout>
   )
 }

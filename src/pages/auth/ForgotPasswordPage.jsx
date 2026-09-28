@@ -1,110 +1,46 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, ArrowRight } from 'lucide-react'
+import { Mail, ArrowLeft, ArrowRight } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { authApi } from '../../api/authApi'
 import AuthLayout from '../../components/layout/AuthLayout'
-import toast from 'react-hot-toast'
+import FormField from '../../components/common/FormField'
+import SubmitButton from '../../components/common/SubmitButton'
+import { getErrorMessage } from '../../utils/helpers'
+import { PENDING_EMAIL_KEY } from '../../utils/constants'
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault()
+    if (!/^\S+@\S+\.\S+$/.test(email)) return toast.error('Enter a valid email')
     setLoading(true)
     try {
-      await authApi.forgotPassword({ email })
-      setSent(true)
-      toast.success('Password reset code sent!')
+      await authApi.forgotPassword(email.trim())
+      sessionStorage.setItem(PENDING_EMAIL_KEY, email.trim())
+      toast.success('If that account exists, a code is on its way.')
+      navigate('/reset-password', { state: { email: email.trim() } })
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send reset code')
+      toast.error(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
   }
 
-  if (sent) {
-    return (
-      <AuthLayout title="Check your email" subtitle="">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full
-                          flex items-center justify-center mx-auto mb-4">
-            <Mail className="w-8 h-8 text-green-600" />
-          </div>
-          <p className="text-gray-600 mb-6">
-            We sent a password reset code to{' '}
-            <span className="font-medium text-gray-900">{email}</span>
-          </p>
-          <button
-            onClick={() => navigate(
-              `/verify-otp?email=${encodeURIComponent(email)}&purpose=PASSWORD_RESET`
-            )}
-            className="btn-primary w-full flex items-center
-                       justify-center gap-2"
-          >
-            Enter Reset Code
-            <ArrowRight className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setSent(false)}
-            className="text-sm text-gray-500 hover:text-gray-700 mt-4 block w-full"
-          >
-            Try a different email
-          </button>
-        </div>
-      </AuthLayout>
-    )
-  }
-
   return (
     <AuthLayout
-      title="Forgot password?"
-      subtitle="Enter your email and we'll send you a reset code"
+      title="Forgot your password?"
+      subtitle="Enter your email and we'll send you a code to reset it."
+      footer={<Link to="/login" className="inline-flex items-center gap-1.5 hover:text-chalk-100"><ArrowLeft size={14} /> Back to sign in</Link>}
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email Address
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            required
-            className="input-field"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-primary w-full flex items-center
-                     justify-center gap-2"
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-white
-                            border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <Mail className="w-5 h-5" />
-              Send Reset Code
-            </>
-          )}
-        </button>
+      <form onSubmit={submit} className="space-y-5" noValidate>
+        <FormField id="email" label="Email" icon={Mail} type="email" autoComplete="email"
+          placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <SubmitButton loading={loading}>Send reset code <ArrowRight size={16} /></SubmitButton>
       </form>
-
-      <p className="text-center text-sm text-gray-500 mt-6">
-        Remember your password?{' '}
-        <Link
-          to="/login"
-          className="text-primary-600 font-medium hover:text-primary-700"
-        >
-          Sign in
-        </Link>
-      </p>
     </AuthLayout>
   )
 }

@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from '../utils/constants';
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { USER_KEY, ROLES } from '../utils/constants'
 
 const useAuthStore = create(
   persist(
@@ -10,37 +10,32 @@ const useAuthStore = create(
       refreshToken: null,
       isAuthenticated: false,
 
-      setAuth: (user, token, refreshToken) => {
-        localStorage.setItem(TOKEN_KEY, token);
-        localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-        set({ user, token, refreshToken, isAuthenticated: true });
-      },
+      setAuth: (user, token, refreshToken) =>
+        set({ user, token, refreshToken, isAuthenticated: true }),
 
-      updateUser: (user) => set({ user }),
+      setTokens: (token, refreshToken) => set({ token, refreshToken }),
 
-      logout: () => {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-        set({ user: null, token: null, refreshToken: null,
-              isAuthenticated: false });
-      },
+      // merges, so a partial update keeps the other fields
+      updateUser: (patch) => set((s) => ({ user: { ...s.user, ...patch } })),
 
-      isAdmin: () => get().user?.role === 'ADMIN',
-      isTeacher: () => get().user?.role === 'TEACHER',
+      logout: () =>
+        set({ user: null, token: null, refreshToken: null, isAuthenticated: false }),
+
+      isAdmin: () => get().user?.role === ROLES.ADMIN,
+      isTeacher: () => get().user?.role === ROLES.TEACHER,
       isAdminOrTeacher: () =>
-        ['ADMIN', 'TEACHER'].includes(get().user?.role),
+        [ROLES.ADMIN, ROLES.TEACHER].includes(get().user?.role),
     }),
     {
       name: USER_KEY,
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        refreshToken: state.refreshToken,
-        isAuthenticated: state.isAuthenticated,
+      partialize: (s) => ({
+        user: s.user,
+        token: s.token,
+        refreshToken: s.refreshToken,
+        isAuthenticated: s.isAuthenticated,
       }),
     }
   )
-);
+)
 
-export default useAuthStore;
+export default useAuthStore
