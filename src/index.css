@@ -415,6 +415,11 @@
       @apply absolute bottom-2 right-2 px-1.5 py-0.5 rounded text-[11px] font-mono font-medium
              bg-space-950/85 text-chalk-100;
     }
+
+  /* ── Comment thread ── */
+  .comment-rail {
+    @apply border-l-2 border-space-500 pl-4 ml-4 mt-3 space-y-4;
+  }
 }
 
 /* ─── Utilities ─────────────────────────────────────────────────────────────── */
