@@ -8,9 +8,12 @@ import useCurrentUser from '../../hooks/useCurrentUser'
 export default function MainLayout() {
   useCurrentUser()
 
-  // scroll to top on page change
   const { pathname } = useLocation()
-  useEffect(() => window.scrollTo(0, 0), [pathname])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    // explicit: no cleanup needed, and never let this effect's
+    // return value be anything but undefined
+  }, [pathname])
 
   return (
     <div className="min-h-screen">

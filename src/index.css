@@ -406,6 +406,15 @@
   .stat-label {
     @apply text-xs text-chalk-500 font-medium;
   }
+
+   /* ── Video card thumbnail ── */
+    .thumb-wrap {
+      @apply relative aspect-video rounded-xl overflow-hidden bg-space-600;
+    }
+    .thumb-badge {
+      @apply absolute bottom-2 right-2 px-1.5 py-0.5 rounded text-[11px] font-mono font-medium
+             bg-space-950/85 text-chalk-100;
+    }
 }
 
 /* ─── Utilities ─────────────────────────────────────────────────────────────── */
