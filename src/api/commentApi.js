@@ -6,4 +6,5 @@ export const commentApi = {
   update:       (id, content) => api.put(`/api/comments/${id}`, { content }),
   remove:       (id)      => api.delete(`/api/comments/${id}`),
   upvote:       (id)      => api.post(`/api/comments/${id}/upvote`),
+  downvote:     (id)      => api.post(`/api/comments/${id}/downvote`),
 }

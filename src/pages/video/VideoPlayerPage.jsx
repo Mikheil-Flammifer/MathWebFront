@@ -61,7 +61,7 @@ export default function VideoPlayerPage() {
       </div>
 
       <div className="divider mb-6" />
-      <CommentSection videoId={id} />
+      <CommentSection videoId={id} initialCount={video.commentCount} />
     </div>
   )
 }

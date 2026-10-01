@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { ArrowBigUp, Reply } from 'lucide-react'
+import { ArrowBigUp, ArrowBigDown, Reply } from 'lucide-react'
 import Avatar from '../common/Avatar'
 import CommentComposer from './CommentComposer'
 import { getFullName, timeAgo } from '../../utils/helpers'
 
-export default function Comment({ comment, videoId, onReply, onUpvote, depth = 0 }) {
+export default function Comment({ comment, videoId, onReply, onVote, votingCommentId, depth = 0 }) {
   const [replying, setReplying] = useState(false)
+  const pending = votingCommentId === comment.id
 
   return (
     <div>
@@ -18,16 +19,32 @@ export default function Comment({ comment, videoId, onReply, onUpvote, depth = 0
           </div>
           <p className="text-sm text-chalk-300 mt-0.5 whitespace-pre-wrap break-words">{comment.content}</p>
 
-          <div className="flex items-center gap-4 mt-1.5">
-            <button
-              onClick={() => onUpvote(comment.id)}
-              className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-                comment.hasUpvoted ? 'text-plasma-300' : 'text-chalk-500 hover:text-chalk-200'
-              }`}
-            >
-              <ArrowBigUp size={15} fill={comment.hasUpvoted ? 'currentColor' : 'none'} />
-              {comment.upvoteCount > 0 ? comment.upvoteCount : ''}
-            </button>
+          <div className="flex items-center gap-3 mt-1.5">
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => onVote(comment.id, 'up')}
+                disabled={pending}
+                aria-label="Upvote"
+                className={`p-0.5 rounded transition-colors disabled:opacity-40 ${
+                  comment.myVote === 1 ? 'text-plasma-300' : 'text-chalk-500 hover:text-chalk-200'
+                }`}
+              >
+                <ArrowBigUp size={16} fill={comment.myVote === 1 ? 'currentColor' : 'none'} />
+              </button>
+              <span className="text-xs font-mono font-medium text-chalk-300 min-w-[1.2em] text-center">
+                {comment.score ?? 0}
+              </span>
+              <button
+                onClick={() => onVote(comment.id, 'down')}
+                disabled={pending}
+                aria-label="Downvote"
+                className={`p-0.5 rounded transition-colors disabled:opacity-40 ${
+                  comment.myVote === -1 ? 'text-red-400' : 'text-chalk-500 hover:text-chalk-200'
+                }`}
+              >
+                <ArrowBigDown size={16} fill={comment.myVote === -1 ? 'currentColor' : 'none'} />
+              </button>
+            </div>
             {depth < 5 && (
               <button
                 onClick={() => setReplying((r) => !r)}
@@ -54,7 +71,15 @@ export default function Comment({ comment, videoId, onReply, onUpvote, depth = 0
       {comment.replies?.length > 0 && (
         <div className="comment-rail">
           {comment.replies.map((reply) => (
-            <Comment key={reply.id} comment={reply} videoId={videoId} onReply={onReply} onUpvote={onUpvote} depth={depth + 1} />
+            <Comment
+              key={reply.id}
+              comment={reply}
+              videoId={videoId}
+              onReply={onReply}
+              onVote={onVote}
+              votingCommentId={votingCommentId}
+              depth={depth + 1}
+            />
           ))}
         </div>
       )}
