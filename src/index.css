@@ -420,6 +420,16 @@
   .comment-rail {
     @apply border-l-2 border-space-500 pl-4 ml-4 mt-3 space-y-4;
   }
+
+  /* ── Problem list row ── */
+  .problem-row {
+    @apply flex items-center gap-4 p-4 rounded-xl border border-space-500 bg-space-700/40
+           transition-colors duration-150;
+  }
+  .problem-row-clickable {
+    @apply flex items-center gap-4 p-4 rounded-xl border border-space-500 bg-space-700/40
+           transition-colors duration-150 hover:border-plasma-500/40 hover:bg-space-700 cursor-pointer;
+  }
 }
 
 /* ─── Utilities ─────────────────────────────────────────────────────────────── */
