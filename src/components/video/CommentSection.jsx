@@ -1,5 +1,5 @@
 import { MessageSquare } from 'lucide-react'
-import { useComments, usePostComment, useUpvoteComment } from '../../hooks/useComments'
+import { useComments, usePostComment, useVoteComment } from '../../hooks/useComments'
 import CommentComposer from './CommentComposer'
 import Comment from './Comment'
 
@@ -7,22 +7,24 @@ function countAll(comments = []) {
   return comments.reduce((sum, c) => sum + 1 + countAll(c.replies), 0)
 }
 
-export default function CommentSection({ videoId }) {
+export default function CommentSection({ videoId, initialCount }) {
   const { data: comments, isLoading } = useComments(videoId)
   const postComment = usePostComment(videoId)
-  const upvote = useUpvoteComment(videoId)
+  const voteMutation = useVoteComment(videoId)
 
   const handlePost = (content, parentCommentId = null) =>
     postComment.mutateAsync({ content, parentCommentId })
 
-  const handleUpvote = (commentId) => upvote.mutate(commentId)
+  const handleVote = (commentId, direction) => voteMutation.mutate({ commentId, direction })
+  // only the comment currently being voted on shows a disabled state — not the whole list
+  const votingCommentId = voteMutation.isPending ? voteMutation.variables?.commentId : null
 
   return (
     <div>
-      <h2 className="section-title mb-5 flex items-center gap-2">
-        <MessageSquare size={18} />
-        {isLoading ? 'Comments' : `${countAll(comments)} Comments`}
-      </h2>
+    <h2 className="section-title mb-5 flex items-center gap-2">
+      <MessageSquare size={18} />
+      {isLoading ? `${initialCount ?? ''} Comments` : `${countAll(comments)} Comments`}
+    </h2>
 
       <div className="mb-6">
         <CommentComposer onSubmit={(content) => handlePost(content)} />
@@ -37,7 +39,14 @@ export default function CommentSection({ videoId }) {
       ) : (
         <div className="space-y-5">
           {comments.map((c) => (
-            <Comment key={c.id} comment={c} videoId={videoId} onReply={handlePost} onUpvote={handleUpvote} />
+            <Comment
+              key={c.id}
+              comment={c}
+              videoId={videoId}
+              onReply={handlePost}
+              onVote={handleVote}
+              votingCommentId={votingCommentId}
+            />
           ))}
         </div>
       )}
