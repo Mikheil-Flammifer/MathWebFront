@@ -29,3 +29,23 @@ export const QUEST_STATUS = {
   IN_PROGRESS: { label: 'In Progress', text: 'text-amber-400',   badge: 'badge-warning' },
   COMPLETED:   { label: 'Completed',   text: 'text-emerald-400', badge: 'badge-success' },
 }
+
+export const NODE_STATUS = {
+  LOCKED: 'LOCKED',
+  AVAILABLE: 'AVAILABLE',
+  SOLVED: 'SOLVED',
+}
+
+// Keyed by mainCategoryName from /map. Adjust colors to your palette.
+export const MAIN_CATEGORY_THEME = {
+  Algebra:        { color: '#a78bfa', label: 'Algebra' },
+  Geometry:       { color: '#38bdf8', label: 'Geometry' },
+  Combinatorics:  { color: '#f472b6', label: 'Combinatorics' },
+  'Number Theory': { color: '#fbbf24', label: 'Number Theory' },
+}
+
+export const DEFAULT_CATEGORY_THEME = { color: '#94a3b8', label: 'Other' }
+
+export function getCategoryTheme(mainCategoryName) {
+  return MAIN_CATEGORY_THEME[mainCategoryName] ?? DEFAULT_CATEGORY_THEME
+}
