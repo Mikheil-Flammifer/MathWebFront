@@ -59,8 +59,7 @@ export default function App() {
         <Route path="/videos/:id" element={<VideoPlayerPage />} />
         <Route path="/quests" element={<QuestMapPage />} />
         <Route path="/quests/:id" element={<QuestDetailPage />} />
-        <Route path="/quests/:questId/problems/:problemId"
-               element={<ProblemPage />} />
+        <Route path="/problems/:id" element={<ProblemPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/subscribe" element={<SubscriptionPage />} />
       </Route>
