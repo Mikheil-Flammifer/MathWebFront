@@ -430,6 +430,11 @@
     @apply flex items-center gap-4 p-4 rounded-xl border border-space-500 bg-space-700/40
            transition-colors duration-150 hover:border-plasma-500/40 hover:bg-space-700 cursor-pointer;
   }
+   /* ── Category pill ── */
+    .category-pill {
+      @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
+             border transition-colors duration-150 cursor-pointer select-none whitespace-nowrap;
+    }
 }
 
 /* ─── Utilities ─────────────────────────────────────────────────────────────── */
