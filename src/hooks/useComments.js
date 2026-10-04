@@ -6,7 +6,6 @@ export function useComments(videoId) {
     queryKey: ['comments', videoId],
     queryFn: async () => {
       const raw = (await commentApi.listForVideo(videoId)).data.data
-      // handles both a plain array and a Spring Page ({ content: [...] })
       return Array.isArray(raw) ? raw : raw?.content ?? []
     },
     enabled: !!videoId,
@@ -27,6 +26,14 @@ export function useVoteComment(videoId) {
   return useMutation({
     mutationFn: ({ commentId, direction }) =>
       direction === 'up' ? commentApi.upvote(commentId) : commentApi.downvote(commentId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['comments', videoId] }),
+  })
+}
+
+export function useDeleteComment(videoId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (commentId) => commentApi.remove(commentId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['comments', videoId] }),
   })
 }

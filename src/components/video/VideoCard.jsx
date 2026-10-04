@@ -36,6 +36,11 @@ export default function VideoCard({ video }) {
 
       <div className="mt-2.5 flex gap-2.5">
         <div className="min-w-0 flex-1">
+            {video.categoryName && (
+              <p className="text-[11px] font-medium text-plasma-400 mb-0.5 truncate">
+                {video.parentCategoryName ? `${video.parentCategoryName} · ${video.categoryName}` : video.categoryName}
+              </p>
+            )}
           <h3 className="text-sm font-medium text-chalk-100 line-clamp-2 group-hover:text-plasma-300 transition-colors">
             {video.title}
           </h3>
