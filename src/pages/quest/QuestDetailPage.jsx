@@ -1,86 +1,104 @@
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Lock, Trophy, AlertTriangle, ArrowLeft } from 'lucide-react'
-import useQuestDetail from '../../hooks/useQuestDetail'
-import ProblemListItem from '../../components/quest/ProblemListItem'
-import EmptyState from '../../components/common/EmptyState'
-import { getDifficultyInfo } from '../../utils/helpers'
+import { useState } from 'react'
+import { useNavigate, useParams, Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { ArrowLeft } from 'lucide-react'
+import { useQuestMap } from '../../hooks/useQuestMap'
+import QuestGraph from '../../components/quest/QuestGraph'
+import { NODE_STATUS, getCategoryTheme } from '../../utils/constants'
+import { useCooldown } from '../../hooks/useCooldown'
+import { formatCountdown } from '../../utils/helpers'
+
+function NodePanel({ node, onOpen }) {
+  const { remaining, active: cooling } = useCooldown(node.retryAvailableAt)
+  const theme = getCategoryTheme(node.mainCategoryName)
+  const locked = node.status === NODE_STATUS.LOCKED
+
+  return (
+    <div className="card p-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="inline-block w-3 h-3 rounded-full" style={{ background: theme.color }} />
+          <span className="font-semibold">{node.mainCategoryName}</span>
+          {node.categoryName && node.categoryName !== node.mainCategoryName && (
+            <span className="text-sm opacity-70">· {node.categoryName}</span>
+          )}
+        </div>
+        <p className="text-sm opacity-80">
+          {node.xpReward} XP · Attempts {node.attemptsUsed}/{node.maxAttempts} ·{' '}
+          {node.status === NODE_STATUS.SOLVED ? 'Solved' : locked ? 'Locked' : 'Open'}
+        </p>
+        {cooling && (
+          <p className="text-sm text-red-300 mt-1">
+            Cooling down — retry in {formatCountdown(remaining)}
+          </p>
+        )}
+        {locked && (
+          <p className="text-sm opacity-70 mt-1">
+            Solve a neighbouring location to unlock this one.
+          </p>
+        )}
+      </div>
+      <button className="btn-primary" disabled={locked} onClick={() => onOpen(node)}>
+        {node.status === NODE_STATUS.SOLVED ? 'Review' : 'Open problem'}
+      </button>
+    </div>
+  )
+}
 
 export default function QuestDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { data: quest, isLoading, isError } = useQuestDetail(id)
+  const { data, isLoading, isError, error } = useQuestMap(id)
+  const [selectedId, setSelectedId] = useState(null)
 
-  if (isLoading) {
+  if (isLoading) return <div className="p-8 opacity-70">Loading map…</div>
+
+  if (isError) {
     return (
-      <div className="max-w-3xl mx-auto space-y-5">
-        <div className="h-24 skeleton rounded-xl" />
-        {Array.from({ length: 4 }, (_, i) => <div key={i} className="h-16 skeleton rounded-xl" />)}
+      <div className="p-8">
+        <p className="mb-2">Couldn’t load this map.</p>
+        <p className="text-sm opacity-70">{error?.response?.data?.message || error.message}</p>
       </div>
     )
   }
 
-  if (isError || !quest) {
-    return <EmptyState icon={AlertTriangle} title="Quest not found" subtitle="It may have been removed or the link is incorrect." />
+  const selected = data.nodes.find((n) => n.problemId === selectedId) || null
+
+  const openProblem = (node) => {
+    if (node.status === NODE_STATUS.LOCKED) {
+      toast('Solve a neighbouring location first')
+      return
+    }
+    navigate(`/problems/${node.problemId}`)
   }
 
-  const locked = quest.status === 'LOCKED'
-  const diff = getDifficultyInfo(quest.difficultyLevel)
-  const problems = quest.problems ?? []
-  const solvedCount = problems.filter((p) => p.solved).length
-  const progressPct = problems.length ? Math.round((solvedCount / problems.length) * 100) : 0
-
   return (
-    <div className="max-w-3xl mx-auto">
-      <Link to="/quests" className="inline-flex items-center gap-1.5 text-sm text-chalk-400 hover:text-chalk-100 mb-5">
-        <ArrowLeft size={15} /> Back to Quest Map
+    <div className="space-y-4">
+      <Link to="/quests" className="inline-flex items-center gap-1 text-sm opacity-80 hover:opacity-100">
+        <ArrowLeft size={16} /> All quests
       </Link>
 
-      <div className="card mb-6">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-plasma-500/15 border border-plasma-500/30 grid place-items-center text-plasma-300 shrink-0">
-            <Trophy size={24} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-              <h1 className="text-2xl font-semibold font-display text-chalk-50">{quest.title}</h1>
-              <span className={`badge ${diff.badge}`}>{diff.label}</span>
-            </div>
-            <p className="text-sm text-chalk-400">{quest.description}</p>
-          </div>
-        </div>
-
-        {locked ? (
-          <div className="alert-info mt-5">
-            <Lock size={16} className="mt-0.5 shrink-0" />
-            Complete the prerequisite quest(s) on the map to unlock this one.
-          </div>
-        ) : (
-          <div className="mt-5">
-            <div className="flex items-center justify-between mb-1.5 text-sm">
-              <span className="text-chalk-400">{solvedCount} of {problems.length} problems solved</span>
-              <span className="text-chalk-500 font-mono">{progressPct}%</span>
-            </div>
-            <div className="progress-bar">
-              <div className="progress-fill-success" style={{ width: `${progressPct}%` }} />
-            </div>
-          </div>
-        )}
+      <div>
+        <h1 className="text-2xl font-bold">{data.title}</h1>
+        <p className="text-sm opacity-70">{data.difficultyLevel}</p>
       </div>
 
-      {problems.length === 0 ? (
-        <EmptyState icon={Trophy} title="No problems yet" subtitle="Check back soon." />
+      {data.questUnlocked === false ? (
+        <div className="card p-6">This quest is locked. Complete its prerequisites first.</div>
+      ) : data.nodes.length === 0 ? (
+        <div className="card p-6">This map has no locations yet.</div>
       ) : (
-        <div className="space-y-2.5">
-          {problems.map((p, i) => (
-            <ProblemListItem
-              key={p.id}
-              problem={p}
-              index={i}
-              locked={locked}
-              onClick={(problemId) => navigate(`/quests/${id}/problems/${problemId}`)}
+        <>
+          <div className="card p-2">
+            <QuestGraph
+              nodes={data.nodes}
+              edges={data.edges}
+              selectedId={selectedId}
+              onSelect={(n) => setSelectedId(n.problemId)}
             />
-          ))}
-        </div>
+          </div>
+          {selected && <NodePanel node={selected} onOpen={openProblem} />}
+        </>
       )}
     </div>
   )

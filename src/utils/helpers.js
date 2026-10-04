@@ -61,3 +61,17 @@ export const getErrorMessage = (error, fallback = 'Something went wrong') => {
   if (error?.request && !error.response) return 'Cannot reach the server. Is the backend running?'
   return error?.message || fallback
 }
+
+// ms left until retryAvailableAt (ISO string), 0 if none or already passed
+export function getCooldownRemainingMs(retryAvailableAt) {
+  if (!retryAvailableAt) return 0
+  const diff = new Date(retryAvailableAt).getTime() - Date.now()
+  return diff > 0 ? diff : 0
+}
+
+export function formatCountdown(ms) {
+  const total = Math.ceil(ms / 1000)
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
