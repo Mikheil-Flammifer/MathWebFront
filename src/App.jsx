@@ -13,6 +13,7 @@ import HomePage from './pages/home/HomePage'
 import VideoPlayerPage from './pages/video/VideoPlayerPage'
 import QuestMapPage from './pages/quest/QuestMapPage'
 import QuestDetailPage from './pages/quest/QuestDetailPage'
+import QuestMapEditorPage from './pages/quest/QuestMapEditorPage'
 import ProblemPage from './pages/problem/ProblemPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import SubscriptionPage from './pages/subscription/SubscriptionPage'
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="/videos/:id" element={<VideoPlayerPage />} />
         <Route path="/quests" element={<QuestMapPage />} />
         <Route path="/quests/:id" element={<QuestDetailPage />} />
+        <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />
         <Route path="/problems/:id" element={<ProblemPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/subscribe" element={<SubscriptionPage />} />

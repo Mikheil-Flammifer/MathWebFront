@@ -4,6 +4,9 @@ import toast from 'react-hot-toast'
 import { ArrowLeft } from 'lucide-react'
 import { useQuestMap } from '../../hooks/useQuestMap'
 import QuestGraph from '../../components/quest/QuestGraph'
+import { Pencil } from 'lucide-react'
+import useAuthStore from '../../store/authStore'
+import { ROLES } from '../../utils/constants'
 import { NODE_STATUS, getCategoryTheme } from '../../utils/constants'
 import { useCooldown } from '../../hooks/useCooldown'
 import { formatCountdown } from '../../utils/helpers'
@@ -50,6 +53,8 @@ export default function QuestDetailPage() {
   const navigate = useNavigate()
   const { data, isLoading, isError, error } = useQuestMap(id)
   const [selectedId, setSelectedId] = useState(null)
+  const role = useAuthStore((s) => s.user?.role)
+  const isStaff = role === ROLES.ADMIN || role === ROLES.TEACHER
 
   if (isLoading) return <div className="p-8 opacity-70">Loading map…</div>
 
@@ -78,9 +83,16 @@ export default function QuestDetailPage() {
         <ArrowLeft size={16} /> All quests
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-bold">{data.title}</h1>
-        <p className="text-sm opacity-70">{data.difficultyLevel}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">{data.title}</h1>
+          <p className="text-sm opacity-70">{data.difficultyLevel}</p>
+        </div>
+        {isStaff && (
+          <Link to={`/quests/${id}/edit`} className="btn-secondary inline-flex items-center gap-1">
+            <Pencil size={15} /> Edit map
+          </Link>
+        )}
       </div>
 
       {data.questUnlocked === false ? (
