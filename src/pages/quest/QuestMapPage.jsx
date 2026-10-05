@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
-  AlertTriangle, Map as MapIcon, Lock, Star, Flame, CheckCircle2, MapPin, PlayCircle,
+ Settings2, AlertTriangle, Map as MapIcon, Lock, Star, Flame, CheckCircle2, MapPin, PlayCircle,
 } from 'lucide-react'
 import useQuests from '../../hooks/useQuests'
 import EmptyState from '../../components/common/EmptyState'
-import { DIFFICULTY_LEVELS, QUEST_STATUS } from '../../utils/constants'
+import useAuthStore from '../../store/authStore'
+import { DIFFICULTY_LEVELS, QUEST_STATUS, ROLES } from '../../utils/constants'
 
 const LEVEL_KEYS = Object.keys(DIFFICULTY_LEVELS)
 
@@ -74,6 +75,8 @@ function QuestCard({ quest, onOpen }) {
 export default function QuestMapPage() {
   const navigate = useNavigate()
   const { data: quests, isLoading, isError } = useQuests()
+  const role = useAuthStore((s) => s.user?.role)
+  const isStaff = role === ROLES.ADMIN || role === ROLES.TEACHER
 
   const groups = useMemo(() => {
     const list = (quests || []).filter((q) => (q.totalProblems ?? 0) > 0)
@@ -96,11 +99,18 @@ export default function QuestMapPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="page-title">Quests</h1>
-        <p className="text-chalk-400 mt-1">
-          Pick a map, then solve problems to open the neighbouring locations.
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="page-title">Quests</h1>
+          <p className="text-chalk-400 mt-1">
+            Pick a map, then solve problems to open the neighbouring locations.
+          </p>
+        </div>
+        {isStaff && (
+          <Link to="/admin/quests" className="btn-secondary inline-flex items-center gap-1">
+            <Settings2 size={15} /> Manage quests
+          </Link>
+        )}
       </div>
 
       {isLoading ? (
