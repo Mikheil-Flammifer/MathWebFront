@@ -8,6 +8,9 @@ import VerifyOtpPage from './pages/auth/VerifyOtpPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 
+// Admin pages
+import AdminQuestsPage from './pages/quest/AdminQuestsPage'
+
 // Main pages
 import HomePage from './pages/home/HomePage'
 import VideoPlayerPage from './pages/video/VideoPlayerPage'
@@ -64,6 +67,7 @@ export default function App() {
         <Route path="/problems/:id" element={<ProblemPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/subscribe" element={<SubscriptionPage />} />
+        <Route path="/admin/quests" element={<AdminQuestsPage />} />
       </Route>
 
       {/* Catch all */}
