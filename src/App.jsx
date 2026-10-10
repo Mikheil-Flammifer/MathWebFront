@@ -12,6 +12,8 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import AdminQuestsPage from './pages/quest/AdminQuestsPage'
 import AdminQuestCreatePage from './pages/quest/AdminQuestCreatePage'
 import AdminQuestSettingsPage from './pages/quest/AdminQuestSettingsPage'
+import AdminProblemCreatePage from './pages/problem/AdminProblemCreatePage'
+import AdminProblemEditPage from './pages/problem/AdminProblemEditPage'
 
 // Main pages
 import HomePage from './pages/home/HomePage'
@@ -63,12 +65,18 @@ export default function App() {
       }>
         <Route path="/home" element={<HomePage />} />
         <Route path="/videos/:id" element={<VideoPlayerPage />} />
+
         <Route path="/quests" element={<QuestMapPage />} />
         <Route path="/quests/:id" element={<QuestDetailPage />} />
-        <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />
+        <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />\
+
         <Route path="/problems/:id" element={<ProblemPage />} />
+        <Route path="/admin/problems/new" element={<AdminProblemCreatePage />} />
+        <Route path="/admin/problems/:id/edit" element={<AdminProblemEditPage />} />
+
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/subscribe" element={<SubscriptionPage />} />
+
         <Route path="/admin/quests" element={<AdminQuestsPage />} />
         <Route path="/admin/quests/new" element={<AdminQuestCreatePage />} />
         <Route path="/admin/quests/:id/settings" element={<AdminQuestSettingsPage />} />

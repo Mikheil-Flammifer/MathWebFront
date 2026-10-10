@@ -16,3 +16,9 @@ export const problemApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     }),
 };
+
+export const problemStaffApi = {
+  getById: (id) => api.get(`/api/problems/${id}`).then((res) => res.data.data),
+  create: (data) => api.post('/api/problems', data).then((res) => res.data.data),
+  update: (id, data) => api.put(`/api/problems/${id}`, data).then((res) => res.data.data),
+};
