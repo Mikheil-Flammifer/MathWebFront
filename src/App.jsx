@@ -10,6 +10,8 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 
 // Admin pages
 import AdminQuestsPage from './pages/quest/AdminQuestsPage'
+import AdminQuestCreatePage from './pages/quest/AdminQuestCreatePage'
+import AdminQuestSettingsPage from './pages/quest/AdminQuestSettingsPage'
 
 // Main pages
 import HomePage from './pages/home/HomePage'
@@ -68,6 +70,8 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/subscribe" element={<SubscriptionPage />} />
         <Route path="/admin/quests" element={<AdminQuestsPage />} />
+        <Route path="/admin/quests/new" element={<AdminQuestCreatePage />} />
+        <Route path="/admin/quests/:id/settings" element={<AdminQuestSettingsPage />} />
       </Route>
 
       {/* Catch all */}
