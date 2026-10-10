@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { AlertTriangle, ArrowLeft, Map as MapIcon, Pencil, Rocket, Eye } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Map as MapIcon, Pencil, Rocket, Eye, Plus, Settings } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import { DIFFICULTY_LEVELS, ROLES } from '../../utils/constants'
 import { questApi } from '../../api/questApi'
@@ -59,12 +59,12 @@ export default function AdminQuestsPage() {
         <ArrowLeft size={16} /> Quests
       </Link>
 
-      <div>
-        <h1 className="page-title">Manage quests</h1>
-        <p className="text-chalk-400 mt-1">
-          All quests, including drafts. Edit a map, then publish it when it is ready.
-        </p>
-      </div>
+    <div className="mb-6 flex items-center justify-between gap-3">
+      <h1 className="text-2xl font-semibold text-white">Manage quests</h1>
+      <Link to="/admin/quests/new" className="btn-primary inline-flex items-center gap-1">
+        <Plus size={15} /> New quest
+      </Link>
+    </div>
 
       {isLoading ? (
         <div className="h-64 skeleton rounded-xl" />
@@ -120,6 +120,12 @@ export default function AdminQuestsPage() {
                         className="btn-secondary inline-flex items-center gap-1"
                       >
                         <Pencil size={15} /> Edit map
+                      </Link>
+                      <Link
+                        to={`/admin/quests/${quest.id}/settings`}
+                        className="btn-secondary inline-flex items-center gap-1"
+                      >
+                        <Settings size={15} /> Settings
                       </Link>
                       {!quest.published && (
                         <button
