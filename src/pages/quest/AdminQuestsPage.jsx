@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { AlertTriangle, ArrowLeft, Map as MapIcon, Pencil, Rocket, Eye, Plus, Settings } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Map as MapIcon, Pencil, Rocket, Eye, Plus, PlusCircle, Settings } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import { DIFFICULTY_LEVELS, ROLES } from '../../utils/constants'
 import { questApi } from '../../api/questApi'
@@ -126,6 +126,12 @@ export default function AdminQuestsPage() {
                         className="btn-secondary inline-flex items-center gap-1"
                       >
                         <Settings size={15} /> Settings
+                      </Link>
+                      <Link
+                        to={`/admin/problems/new?questId=${quest.id}`}
+                        className="btn-secondary inline-flex items-center gap-1"
+                      >
+                        <PlusCircle size={15} /> Add problem
                       </Link>
                       {!quest.published && (
                         <button
