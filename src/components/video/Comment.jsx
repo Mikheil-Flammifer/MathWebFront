@@ -10,7 +10,7 @@ export default function Comment({ comment, videoId, onReply, onVote, votingComme
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.role === 'ADMIN'
-  const isOwner = user?.id === comment.author?.id
+  const isOwner = user?.id === comment.user?.id
   const canDelete = !comment.deleted && (isOwner || isAdmin)
   const pending = votingCommentId === comment.id
   const deleting = deletingCommentId === comment.id
@@ -56,10 +56,10 @@ export default function Comment({ comment, videoId, onReply, onVote, votingComme
   return (
     <div>
       <div className="flex gap-3">
-        <Avatar user={comment.author} className="w-8 h-8 text-xs shrink-0" />
+        <Avatar user={comment.user} className="w-8 h-8 text-xs shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
-            <span className="text-sm font-medium text-chalk-100">{getFullName(comment.author)}</span>
+            <span className="text-sm font-medium text-chalk-100">{getFullName(comment.user)}</span>
             <span className="text-xs text-chalk-500">{timeAgo(comment.createdAt)}</span>
           </div>
           <p className="text-sm text-chalk-300 mt-0.5 whitespace-pre-wrap break-words">{comment.content}</p>
@@ -129,7 +129,7 @@ export default function Comment({ comment, videoId, onReply, onVote, votingComme
           {replying && (
             <div className="mt-3">
               <CommentComposer
-                placeholder={`Reply to ${comment.author?.firstName || 'this comment'}...`}
+                placeholder={`Reply to ${comment.user?.firstName || 'this comment'}...`}
                 autoFocus
                 onCancel={() => setReplying(false)}
                 onSubmit={(content) => onReply(content, comment.id)}
