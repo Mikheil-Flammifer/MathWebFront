@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import api from '../../api/axios'
 import { problemApi } from '../../api/problemApi'
 import { getCategoryTheme } from '../../utils/constants'
+import MathText from '../../components/MathText'
 
 function fileUrl(path) {
   if (!path) return null
@@ -131,7 +132,9 @@ function ProblemView({ id }) {
           <span className="opacity-70">Attempt {solved ? attemptsUsed : attemptsUsed + 1}</span>
         </div>
 
-        <p className="text-lg whitespace-pre-wrap">{data.questionText}</p>
+        <p className="text-lg">
+          <MathText text={data.questionText} />
+        </p>
 
         {data.questionImagePath && (
           <img
@@ -157,7 +160,7 @@ function ProblemView({ id }) {
                     background: selected ? `${theme.color}22` : 'transparent',
                   }}
                 >
-                  <span>{opt.optionText}</span>
+                  <MathText text={opt.optionText} />
                   {opt.optionImagePath && (
                     <img
                       src={fileUrl(opt.optionImagePath)}
@@ -202,10 +205,14 @@ function ProblemView({ id }) {
           </div>
           {correctAnswer && (
             <p className="text-sm">
-              <span className="opacity-70">Answer:</span> {correctAnswer}
+              <span className="opacity-70">Answer:</span> <MathText text={correctAnswer} />
             </p>
           )}
-          {explanation && <p className="whitespace-pre-wrap">{explanation}</p>}
+          {explanation && (
+            <p>
+              <MathText text={explanation} />
+            </p>
+          )}
           {explanationImage && (
             <img
               src={fileUrl(explanationImage)}
