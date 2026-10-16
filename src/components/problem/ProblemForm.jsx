@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
+import MathText from '../../components/MathText';
 
 const LEVELS = [
   ['LEVEL_1_BEGINNER', 'Level 1 · Beginner'],
@@ -12,6 +13,8 @@ const LEVELS = [
   ['LEVEL_7_MASTER', 'Level 7 · Master'],
 ];
 
+const MAX_HINTS = 3;
+
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-violet-400 focus:outline-none';
 
@@ -21,6 +24,16 @@ const emptyOptions = () => [
   { optionText: '', isCorrect: false },
   { optionText: '', isCorrect: false },
 ];
+
+function Preview({ text }) {
+  if (!text || !text.trim()) return null;
+  return (
+    <div className="mt-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white">
+      <div className="mb-1 text-xs uppercase tracking-wide text-white/40">Preview</div>
+      <MathText text={text} />
+    </div>
+  );
+}
 
 export default function ProblemForm({
   initial,
@@ -34,7 +47,7 @@ export default function ProblemForm({
   const [questId, setQuestId] = useState(String(initial?.questId ?? ''));
   const [questionText, setQuestionText] = useState(initial?.questionText ?? '');
   const [problemType, setProblemType] = useState(
-    initial?.problemType ?? 'OPEN_ANSWER'
+    initial?.problemType === 'MULTIPLE_CHOICE' ? 'MULTIPLE_CHOICE' : 'OPEN_ANSWER'
   );
   const [difficultyLevel, setDifficultyLevel] = useState(
     initial?.difficultyLevel ?? 'LEVEL_1_BEGINNER'
@@ -44,6 +57,9 @@ export default function ProblemForm({
   const [orderIndex, setOrderIndex] = useState(String(initial?.orderIndex ?? 1));
   const [explanation, setExplanation] = useState(initial?.explanation ?? '');
   const [correctAnswer, setCorrectAnswer] = useState(initial?.correctAnswer ?? '');
+  const [hints, setHints] = useState(
+    Array.isArray(initial?.hints) ? initial.hints.slice(0, MAX_HINTS) : []
+  );
   const [options, setOptions] = useState(
     initial?.answerOptions && initial.answerOptions.length > 0
       ? initial.answerOptions
@@ -86,6 +102,30 @@ export default function ProblemForm({
     setOptions((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const setHintText = (index, text) => {
+    setHints((prev) => prev.map((h, i) => (i === index ? text : h)));
+  };
+
+  const addHint = () => {
+    setHints((prev) => (prev.length >= MAX_HINTS ? prev : [...prev, '']));
+  };
+
+  const removeHint = (index) => {
+    setHints((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const moveHint = (index, direction) => {
+    setHints((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      const temp = next[index];
+      next[index] = next[target];
+      next[target] = temp;
+      return next;
+    });
+  };
+
   const validate = () => {
     const next = {};
     if (!questId) next.questId = 'Choose a quest';
@@ -120,6 +160,7 @@ export default function ProblemForm({
       xpReward: Number(xpReward),
       orderIndex: Number(orderIndex),
       categoryId: Number(categoryId),
+      hints: hints.map((h) => h.trim()).filter((h) => h.length > 0),
     };
     if (problemType === 'OPEN_ANSWER') {
       payload.correctAnswer = correctAnswer.trim();
@@ -157,7 +198,9 @@ export default function ProblemForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm text-white/70">Question</label>
+        <label className="mb-1 block text-sm text-white/70">
+          Question (use $...$ for formulas, $$...$$ for display formulas)
+        </label>
         <textarea
           className={inputClass}
           rows={4}
@@ -165,6 +208,7 @@ export default function ProblemForm({
           onChange={(e) => setQuestionText(e.target.value)}
         />
         {fieldError('questionText')}
+        <Preview text={questionText} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -265,28 +309,31 @@ export default function ProblemForm({
           </label>
           <div className="space-y-2">
             {options.map((opt, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="correctOption"
-                  checked={!!opt.isCorrect}
-                  onChange={() => setCorrect(index)}
-                />
-                <input
-                  className={inputClass}
-                  value={opt.optionText}
-                  placeholder={`Option ${index + 1}`}
-                  onChange={(e) => setOptionText(index, e.target.value)}
-                />
-                {options.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => removeOption(index)}
-                    className="px-2 text-white/50 hover:text-red-400"
-                  >
-                    ✕
-                  </button>
-                )}
+              <div key={index}>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="correctOption"
+                    checked={!!opt.isCorrect}
+                    onChange={() => setCorrect(index)}
+                  />
+                  <input
+                    className={inputClass}
+                    value={opt.optionText}
+                    placeholder={`Option ${index + 1}`}
+                    onChange={(e) => setOptionText(index, e.target.value)}
+                  />
+                  {options.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removeOption(index)}
+                      className="px-2 text-white/50 hover:text-red-400"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                {opt.optionText.includes('$') && <Preview text={opt.optionText} />}
               </div>
             ))}
           </div>
@@ -303,6 +350,63 @@ export default function ProblemForm({
 
       <div>
         <label className="mb-1 block text-sm text-white/70">
+          Hints (up to {MAX_HINTS}, students reveal them one by one)
+        </label>
+        <div className="space-y-3">
+          {hints.map((hint, index) => (
+            <div key={index}>
+              <div className="flex items-start gap-2">
+                <span className="mt-2 w-5 text-sm text-white/50">{index + 1}.</span>
+                <textarea
+                  className={inputClass}
+                  rows={2}
+                  value={hint}
+                  placeholder={`Hint ${index + 1}`}
+                  onChange={(e) => setHintText(index, e.target.value)}
+                />
+                <div className="flex flex-col">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    onClick={() => moveHint(index, -1)}
+                    className="px-2 text-white/50 hover:text-white disabled:opacity-30"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === hints.length - 1}
+                    onClick={() => moveHint(index, 1)}
+                    className="px-2 text-white/50 hover:text-white disabled:opacity-30"
+                  >
+                    ↓
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeHint(index)}
+                  className="px-2 pt-2 text-white/50 hover:text-red-400"
+                >
+                  ✕
+                </button>
+              </div>
+              <Preview text={hint} />
+            </div>
+          ))}
+        </div>
+        {hints.length < MAX_HINTS && (
+          <button
+            type="button"
+            onClick={addHint}
+            className="mt-2 text-sm text-violet-300 hover:text-violet-200"
+          >
+            + Add hint
+          </button>
+        )}
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm text-white/70">
           Explanation (shown after a correct solve)
         </label>
         <textarea
@@ -311,6 +415,7 @@ export default function ProblemForm({
           value={explanation}
           onChange={(e) => setExplanation(e.target.value)}
         />
+        <Preview text={explanation} />
       </div>
 
       {error && (
