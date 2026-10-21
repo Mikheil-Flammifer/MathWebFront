@@ -23,7 +23,7 @@ function findInlineEnd(text, from) {
 
 // Splits text into { type: "text" | "inline" | "display", value } tokens.
 // "\$" outside a formula becomes a literal "$". An unmatched "$" stays plain text.
-function tokenize(text) {
+export function tokenize(text) {
   const tokens = [];
   let buf = "";
   let i = 0;

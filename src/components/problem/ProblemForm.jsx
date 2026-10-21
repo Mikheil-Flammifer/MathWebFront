@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
-import MathText from '../../components/MathText';
+import RichMathInput from '../../components/RichMathInput';
+import ProblemPreview from '../../components/problem/ProblemPreview';
 
 const LEVELS = [
   ['LEVEL_1_BEGINNER', 'Level 1 · Beginner'],
@@ -13,10 +14,42 @@ const LEVELS = [
   ['LEVEL_7_MASTER', 'Level 7 · Master'],
 ];
 
+const TYPES = [
+  ['OPEN_ANSWER', 'Open answer', 'Students type their answer in a text box.'],
+  ['MULTIPLE_CHOICE', 'Multiple choice', 'Students pick one of several options.'],
+];
+
+const STEPS = [
+  { id: 'basics', label: 'Basics' },
+  { id: 'question', label: 'Question' },
+  { id: 'answer', label: 'Answer' },
+  { id: 'hints', label: 'Hints' },
+  { id: 'review', label: 'Review' },
+];
+
+// Which step each validation error belongs to.
+const ERROR_STEP = {
+  questId: 0,
+  categoryId: 0,
+  xpReward: 0,
+  orderIndex: 0,
+  questionText: 1,
+  correctAnswer: 2,
+  options: 2,
+};
+
 const MAX_HINTS = 3;
+const LAST_STEP = STEPS.length - 1;
 
 const inputClass =
-  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-violet-400 focus:outline-none';
+  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/40 focus:border-violet-400 focus:outline-none';
+const cardClass = 'space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-6';
+const labelClass = 'mb-1 block text-sm font-medium text-white/80';
+const helpClass = 'mt-1 text-xs text-white/50';
+const primaryBtn =
+  'rounded-lg bg-violet-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-400 disabled:opacity-50';
+const ghostBtn =
+  'rounded-lg border border-white/15 px-5 py-2.5 text-sm text-white/80 hover:bg-white/5 disabled:opacity-30';
 
 const emptyOptions = () => [
   { optionText: '', isCorrect: false },
@@ -25,12 +58,11 @@ const emptyOptions = () => [
   { optionText: '', isCorrect: false },
 ];
 
-function Preview({ text }) {
-  if (!text || !text.trim()) return null;
+function StepHeader({ title, subtitle }) {
   return (
-    <div className="mt-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white">
-      <div className="mb-1 text-xs uppercase tracking-wide text-white/40">Preview</div>
-      <MathText text={text} />
+    <div>
+      <h2 className="text-xl font-semibold text-white">{title}</h2>
+      <p className="mt-1 text-sm text-white/60">{subtitle}</p>
     </div>
   );
 }
@@ -44,6 +76,7 @@ export default function ProblemForm({
   error = '',
   submitLabel = 'Save',
 }) {
+  const [step, setStep] = useState(0);
   const [questId, setQuestId] = useState(String(initial?.questId ?? ''));
   const [questionText, setQuestionText] = useState(initial?.questionText ?? '');
   const [problemType, setProblemType] = useState(
@@ -74,6 +107,20 @@ export default function ProblemForm({
 
   const subsOf = (main) =>
     main.subcategories || main.subCategories || main.children || [];
+
+  let mainCategoryName = '';
+  let categoryName = '';
+  categoryTree.forEach((main) => {
+    subsOf(main).forEach((sub) => {
+      if (String(sub.id) === categoryId) {
+        mainCategoryName = main.name;
+        categoryName = sub.name;
+      }
+    });
+  });
+
+  const levelLabel = LEVELS.find(([value]) => value === difficultyLevel)?.[1] ?? '';
+  const questTitle = quests.find((q) => String(q.id) === questId)?.title ?? '';
 
   const handleQuestChange = (value) => {
     setQuestId(value);
@@ -126,15 +173,15 @@ export default function ProblemForm({
     });
   };
 
-  const validate = () => {
+  const getErrors = () => {
     const next = {};
     if (!questId) next.questId = 'Choose a quest';
-    if (!questionText.trim()) next.questionText = 'Question text is required';
     if (!categoryId) next.categoryId = 'Choose a category';
     const xp = Number(xpReward);
     if (!Number.isInteger(xp) || xp < 0) next.xpReward = 'XP must be 0 or more';
     const oi = Number(orderIndex);
     if (!Number.isInteger(oi) || oi < 1) next.orderIndex = 'Order must be 1 or more';
+    if (!questionText.trim()) next.questionText = 'Write the question first';
 
     if (problemType === 'OPEN_ANSWER') {
       if (!correctAnswer.trim()) next.correctAnswer = 'Correct answer is required';
@@ -144,13 +191,39 @@ export default function ProblemForm({
       if (filled.length < 2) next.options = 'Add at least 2 options';
       else if (correctCount !== 1) next.options = 'Mark exactly one correct option';
     }
-    setErrors(next);
-    return Object.keys(next).length === 0;
+    return next;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!validate()) return;
+  const goTo = (index) => {
+    setErrors({});
+    setStep(index);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const next = () => {
+    const all = getErrors();
+    const here = {};
+    Object.keys(all).forEach((key) => {
+      if (ERROR_STEP[key] === step) here[key] = all[key];
+    });
+    if (Object.keys(here).length > 0) {
+      setErrors(here);
+      return;
+    }
+    goTo(step + 1);
+  };
+
+  const save = () => {
+    const all = getErrors();
+    const keys = Object.keys(all);
+    if (keys.length > 0) {
+      const first = Math.min(...keys.map((key) => ERROR_STEP[key]));
+      setErrors(all);
+      setStep(first);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     const payload = {
       questId: Number(questId),
       questionText: questionText.trim(),
@@ -175,248 +248,403 @@ export default function ProblemForm({
   const fieldError = (key) =>
     errors[key] ? <p className="mt-1 text-xs text-red-400">{errors[key]}</p> : null;
 
+  const pending = step === LAST_STEP ? getErrors() : {};
+
+  const summary = [
+    ['Quest', questTitle || '—', 0],
+    ['Category', categoryName ? `${mainCategoryName} · ${categoryName}` : '—', 0],
+    ['Difficulty', levelLabel || '—', 0],
+    ['XP reward', xpReward || '0', 0],
+    ['Order in quest', orderIndex || '—', 0],
+    ['Answer type', problemType === 'OPEN_ANSWER' ? 'Open answer' : 'Multiple choice', 2],
+  ];
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div>
-        <label className="mb-1 block text-sm text-white/70">Quest</label>
-        <select
-          className={inputClass}
-          value={questId}
-          disabled={lockQuest}
-          onChange={(e) => handleQuestChange(e.target.value)}
-        >
-          <option value="" className="text-black">
-            Choose a quest…
-          </option>
-          {quests.map((q) => (
-            <option key={q.id} value={q.id} className="text-black">
-              {q.title}
-            </option>
-          ))}
-        </select>
-        {fieldError('questId')}
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm text-white/70">
-          Question (use $...$ for formulas, $$...$$ for display formulas)
-        </label>
-        <textarea
-          className={inputClass}
-          rows={4}
-          value={questionText}
-          onChange={(e) => setQuestionText(e.target.value)}
-        />
-        {fieldError('questionText')}
-        <Preview text={questionText} />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm text-white/70">Type</label>
-          <select
-            className={inputClass}
-            value={problemType}
-            onChange={(e) => setProblemType(e.target.value)}
+    <form
+      onSubmit={(e) => e.preventDefault()}
+      className="mx-auto max-w-3xl space-y-6"
+    >
+      <ol className="flex items-center">
+        {STEPS.map((s, i) => (
+          <li
+            key={s.id}
+            className={i < LAST_STEP ? 'flex flex-1 items-center' : 'flex items-center'}
           >
-            <option value="OPEN_ANSWER" className="text-black">
-              Open answer
-            </option>
-            <option value="MULTIPLE_CHOICE" className="text-black">
-              Multiple choice
-            </option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm text-white/70">Category</label>
-          <select
-            className={inputClass}
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            <option value="" className="text-black">
-              Choose a category…
-            </option>
-            {categoryTree.map((main) => (
-              <optgroup key={main.id} label={main.name} className="text-black">
-                {subsOf(main).map((sub) => (
-                  <option key={sub.id} value={sub.id} className="text-black">
-                    {sub.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          {fieldError('categoryId')}
-        </div>
-      </div>
+            <button
+              type="button"
+              onClick={() => goTo(i)}
+              className="flex items-center gap-2"
+            >
+              <span
+                className={
+                  i === step
+                    ? 'flex h-8 w-8 items-center justify-center rounded-full bg-violet-500 text-sm font-semibold text-white'
+                    : i < step
+                      ? 'flex h-8 w-8 items-center justify-center rounded-full bg-violet-500/30 text-sm font-semibold text-violet-200'
+                      : 'flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-sm text-white/60'
+                }
+              >
+                {i < step ? '✓' : i + 1}
+              </span>
+              <span
+                className={
+                  i === step
+                    ? 'hidden text-sm font-medium text-white sm:inline'
+                    : 'hidden text-sm text-white/60 sm:inline'
+                }
+              >
+                {s.label}
+              </span>
+            </button>
+            {i < LAST_STEP && (
+              <span
+                className={
+                  i < step
+                    ? 'mx-3 h-px flex-1 bg-violet-400'
+                    : 'mx-3 h-px flex-1 bg-white/15'
+                }
+              />
+            )}
+          </li>
+        ))}
+      </ol>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div>
-          <label className="mb-1 block text-sm text-white/70">Difficulty</label>
-          <select
-            className={inputClass}
-            value={difficultyLevel}
-            onChange={(e) => setDifficultyLevel(e.target.value)}
-          >
-            {LEVELS.map(([value, label]) => (
-              <option key={value} value={value} className="text-black">
-                {label}
+      {step === 0 && (
+        <section className={cardClass}>
+          <StepHeader
+            title="Basics"
+            subtitle="Where does this problem live, and how much is it worth?"
+          />
+
+          <div>
+            <label className={labelClass}>Quest</label>
+            <select
+              className={inputClass}
+              value={questId}
+              disabled={lockQuest}
+              onChange={(e) => handleQuestChange(e.target.value)}
+            >
+              <option value="" className="text-black">
+                Choose a quest…
               </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm text-white/70">XP reward</label>
-          <input
-            className={inputClass}
-            type="number"
-            min="0"
-            step="1"
-            value={xpReward}
-            onChange={(e) => setXpReward(e.target.value)}
-          />
-          {fieldError('xpReward')}
-        </div>
-        <div>
-          <label className="mb-1 block text-sm text-white/70">Order</label>
-          <input
-            className={inputClass}
-            type="number"
-            min="1"
-            step="1"
-            value={orderIndex}
-            onChange={(e) => setOrderIndex(e.target.value)}
-          />
-          {fieldError('orderIndex')}
-        </div>
-      </div>
+              {quests.map((q) => (
+                <option key={q.id} value={q.id} className="text-black">
+                  {q.title}
+                </option>
+              ))}
+            </select>
+            {fieldError('questId')}
+          </div>
 
-      {problemType === 'OPEN_ANSWER' ? (
-        <div>
-          <label className="mb-1 block text-sm text-white/70">Correct answer</label>
-          <input
-            className={inputClass}
-            value={correctAnswer}
-            onChange={(e) => setCorrectAnswer(e.target.value)}
+          <div>
+            <label className={labelClass}>Category</label>
+            <select
+              className={inputClass}
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+            >
+              <option value="" className="text-black">
+                Choose a category…
+              </option>
+              {categoryTree.map((main) => (
+                <optgroup key={main.id} label={main.name} className="text-black">
+                  {subsOf(main).map((sub) => (
+                    <option key={sub.id} value={sub.id} className="text-black">
+                      {sub.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {fieldError('categoryId')}
+          </div>
+
+          <div>
+            <label className={labelClass}>Difficulty</label>
+            <select
+              className={inputClass}
+              value={difficultyLevel}
+              onChange={(e) => setDifficultyLevel(e.target.value)}
+            >
+              {LEVELS.map(([value, label]) => (
+                <option key={value} value={value} className="text-black">
+                  {label}
+                </option>
+              ))}
+            </select>
+            <p className={helpClass}>Filled in from the quest when you pick one.</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>XP reward</label>
+              <input
+                className={inputClass}
+                type="number"
+                min="0"
+                step="1"
+                value={xpReward}
+                onChange={(e) => setXpReward(e.target.value)}
+              />
+              {fieldError('xpReward')}
+            </div>
+            <div>
+              <label className={labelClass}>Order in quest</label>
+              <input
+                className={inputClass}
+                type="number"
+                min="1"
+                step="1"
+                value={orderIndex}
+                onChange={(e) => setOrderIndex(e.target.value)}
+              />
+              {fieldError('orderIndex')}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {step === 1 && (
+        <section className={cardClass}>
+          <StepHeader
+            title="Question"
+            subtitle="Write the question. Use ∑ Formula wherever you need math."
           />
-          {fieldError('correctAnswer')}
-        </div>
-      ) : (
-        <div>
-          <label className="mb-1 block text-sm text-white/70">
-            Answer options (select the correct one)
-          </label>
-          <div className="space-y-2">
-            {options.map((opt, index) => (
-              <div key={index}>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="correctOption"
-                    checked={!!opt.isCorrect}
-                    onChange={() => setCorrect(index)}
-                  />
-                  <input
-                    className={inputClass}
-                    value={opt.optionText}
-                    placeholder={`Option ${index + 1}`}
-                    onChange={(e) => setOptionText(index, e.target.value)}
-                  />
-                  {options.length > 2 && (
+          <RichMathInput
+            value={questionText}
+            onChange={setQuestionText}
+            minRows={6}
+            placeholder="Type the question here…"
+          />
+          {fieldError('questionText')}
+        </section>
+      )}
+
+      {step === 2 && (
+        <section className={cardClass}>
+          <StepHeader
+            title="Answer"
+            subtitle="Choose how students answer, then set the correct answer."
+          />
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {TYPES.map(([value, label, help]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setProblemType(value)}
+                className={
+                  problemType === value
+                    ? 'rounded-xl border-2 border-violet-400 bg-violet-500/10 p-4 text-left'
+                    : 'rounded-xl border-2 border-white/10 bg-white/5 p-4 text-left hover:border-white/30'
+                }
+              >
+                <div className="font-semibold text-white">{label}</div>
+                <div className="mt-1 text-sm text-white/60">{help}</div>
+              </button>
+            ))}
+          </div>
+
+          {problemType === 'OPEN_ANSWER' ? (
+            <div>
+              <label className={labelClass}>Correct answer</label>
+              <input
+                className={inputClass}
+                value={correctAnswer}
+                placeholder="For example: 3"
+                onChange={(e) => setCorrectAnswer(e.target.value)}
+              />
+              {fieldError('correctAnswer')}
+            </div>
+          ) : (
+            <div>
+              <label className={labelClass}>Options</label>
+              <p className="mb-3 text-xs text-white/50">
+                Click the letter circle of the correct option to mark it.
+              </p>
+              <div className="space-y-3">
+                {options.map((opt, index) => (
+                  <div key={index} className="flex items-start gap-2">
                     <button
                       type="button"
-                      onClick={() => removeOption(index)}
+                      title="Mark as correct"
+                      onClick={() => setCorrect(index)}
+                      className={
+                        opt.isCorrect
+                          ? 'mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-500 text-sm font-bold text-white'
+                          : 'mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 text-sm text-white/70 hover:border-green-400'
+                      }
+                    >
+                      {opt.isCorrect ? '✓' : String.fromCharCode(65 + index)}
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <RichMathInput
+                        compact
+                        minRows={1}
+                        value={opt.optionText}
+                        placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                        onChange={(text) => setOptionText(index, text)}
+                      />
+                    </div>
+                    {options.length > 2 && (
+                      <button
+                        type="button"
+                        title="Remove option"
+                        onClick={() => removeOption(index)}
+                        className="px-2 pt-2 text-white/50 hover:text-red-400"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={addOption}
+                className="mt-3 text-sm text-violet-300 hover:text-violet-200"
+              >
+                + Add option
+              </button>
+              {fieldError('options')}
+            </div>
+          )}
+        </section>
+      )}
+
+      {step === 3 && (
+        <section className={cardClass}>
+          <StepHeader
+            title="Hints and explanation"
+            subtitle="Both are optional. Students reveal hints one by one, in this order."
+          />
+
+          <div className="space-y-4">
+            {hints.map((hint, index) => (
+              <div
+                key={index}
+                className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-4"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-amber-200">Hint {index + 1}</span>
+                  <span className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      title="Move up"
+                      disabled={index === 0}
+                      onClick={() => moveHint(index, -1)}
+                      className="px-2 text-white/50 hover:text-white disabled:opacity-30"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      title="Move down"
+                      disabled={index === hints.length - 1}
+                      onClick={() => moveHint(index, 1)}
+                      className="px-2 text-white/50 hover:text-white disabled:opacity-30"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      title="Remove hint"
+                      onClick={() => removeHint(index)}
                       className="px-2 text-white/50 hover:text-red-400"
                     >
                       ✕
                     </button>
-                  )}
+                  </span>
                 </div>
-                {opt.optionText.includes('$') && <Preview text={opt.optionText} />}
+                <RichMathInput
+                  minRows={2}
+                  value={hint}
+                  placeholder={`Hint ${index + 1}`}
+                  onChange={(text) => setHintText(index, text)}
+                />
               </div>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={addOption}
-            className="mt-2 text-sm text-violet-300 hover:text-violet-200"
-          >
-            + Add option
-          </button>
-          {fieldError('options')}
-        </div>
+
+          {hints.length < MAX_HINTS && (
+            <button
+              type="button"
+              onClick={addHint}
+              className="w-full rounded-xl border border-dashed border-white/20 px-4 py-3 text-sm text-violet-300 hover:border-violet-400 hover:text-violet-200"
+            >
+              + Add hint ({hints.length} / {MAX_HINTS})
+            </button>
+          )}
+
+          <div className="space-y-2 border-t border-white/10 pt-5">
+            <label className={labelClass}>Explanation (shown after the problem is solved)</label>
+            <RichMathInput
+              value={explanation}
+              onChange={setExplanation}
+              minRows={4}
+              placeholder="Explain the solution step by step…"
+            />
+          </div>
+        </section>
       )}
 
-      <div>
-        <label className="mb-1 block text-sm text-white/70">
-          Hints (up to {MAX_HINTS}, students reveal them one by one)
-        </label>
-        <div className="space-y-3">
-          {hints.map((hint, index) => (
-            <div key={index}>
-              <div className="flex items-start gap-2">
-                <span className="mt-2 w-5 text-sm text-white/50">{index + 1}.</span>
-                <textarea
-                  className={inputClass}
-                  rows={2}
-                  value={hint}
-                  placeholder={`Hint ${index + 1}`}
-                  onChange={(e) => setHintText(index, e.target.value)}
-                />
-                <div className="flex flex-col">
+      {step === LAST_STEP && (
+        <div className="space-y-5">
+          <section className={cardClass}>
+            <StepHeader
+              title="Review"
+              subtitle="Check the settings and how students will see this problem."
+            />
+
+            {Object.keys(pending).length > 0 && (
+              <div className="space-y-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                <div className="font-medium">Fix these before saving:</div>
+                {Object.keys(pending).map((key) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span>{pending[key]}</span>
+                    <button
+                      type="button"
+                      onClick={() => goTo(ERROR_STEP[key])}
+                      className="ml-auto underline"
+                    >
+                      Go to {STEPS[ERROR_STEP[key]].label}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <dl className="divide-y divide-white/10 rounded-lg border border-white/10 text-sm">
+              {summary.map(([label, value, stepIndex]) => (
+                <div key={label} className="flex items-center gap-3 px-4 py-2.5">
+                  <dt className="w-36 text-white/50">{label}</dt>
+                  <dd className="flex-1 text-white">{value}</dd>
                   <button
                     type="button"
-                    disabled={index === 0}
-                    onClick={() => moveHint(index, -1)}
-                    className="px-2 text-white/50 hover:text-white disabled:opacity-30"
+                    onClick={() => goTo(stepIndex)}
+                    className="text-violet-300 hover:text-violet-200"
                   >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    disabled={index === hints.length - 1}
-                    onClick={() => moveHint(index, 1)}
-                    className="px-2 text-white/50 hover:text-white disabled:opacity-30"
-                  >
-                    ↓
+                    Edit
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeHint(index)}
-                  className="px-2 pt-2 text-white/50 hover:text-red-400"
-                >
-                  ✕
-                </button>
-              </div>
-              <Preview text={hint} />
-            </div>
-          ))}
-        </div>
-        {hints.length < MAX_HINTS && (
-          <button
-            type="button"
-            onClick={addHint}
-            className="mt-2 text-sm text-violet-300 hover:text-violet-200"
-          >
-            + Add hint
-          </button>
-        )}
-      </div>
+              ))}
+            </dl>
+          </section>
 
-      <div>
-        <label className="mb-1 block text-sm text-white/70">
-          Explanation (shown after a correct solve)
-        </label>
-        <textarea
-          className={inputClass}
-          rows={3}
-          value={explanation}
-          onChange={(e) => setExplanation(e.target.value)}
-        />
-        <Preview text={explanation} />
-      </div>
+          <ProblemPreview
+            questionText={questionText}
+            problemType={problemType}
+            options={options}
+            correctAnswer={correctAnswer}
+            hints={hints}
+            explanation={explanation}
+            xpReward={xpReward}
+            mainCategoryName={mainCategoryName}
+            categoryName={categoryName}
+            levelLabel={levelLabel}
+          />
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
@@ -424,13 +652,25 @@ export default function ProblemForm({
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-lg bg-violet-500 px-5 py-2 text-sm font-medium text-white hover:bg-violet-400 disabled:opacity-50"
-      >
-        {submitting ? 'Saving…' : submitLabel}
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          className={ghostBtn}
+          disabled={step === 0}
+          onClick={() => goTo(step - 1)}
+        >
+          ← Back
+        </button>
+        {step < LAST_STEP ? (
+          <button type="button" className={primaryBtn} onClick={next}>
+            Next →
+          </button>
+        ) : (
+          <button type="button" className={primaryBtn} disabled={submitting} onClick={save}>
+            {submitting ? 'Saving…' : submitLabel}
+          </button>
+        )}
+      </div>
     </form>
   );
 }
