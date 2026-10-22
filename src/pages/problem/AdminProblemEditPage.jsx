@@ -70,6 +70,9 @@ export default function ProblemEditPage() {
           orderIndex: problem.orderIndex,
           explanation: problem.explanation ?? '',
           correctAnswer: problem.correctAnswer ?? '',
+          hints: (problem.hints ?? []).map((h) =>
+            typeof h === 'string' ? h : h?.text ?? ''
+          ),
           answerOptions: (problem.answerOptions ?? []).map((o) => ({
             optionText: o.optionText,
             isCorrect: !!(o.isCorrect ?? o.correct),

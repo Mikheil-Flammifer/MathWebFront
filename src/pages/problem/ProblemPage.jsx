@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Lightbulb, Pencil } from 'lucide-react'
 import api from '../../api/axios'
 import { problemApi } from '../../api/problemApi'
 import { getCategoryTheme } from '../../utils/constants'
+import useAuthStore from '../../store/authStore'
 import MathText from '../../components/MathText'
 
 function fileUrl(path) {
@@ -19,9 +20,15 @@ function errMessage(err, fallback) {
   return err?.response?.data?.message || err?.message || fallback
 }
 
+function hintText(hint) {
+  if (typeof hint === 'string') return hint
+  return hint?.text ?? hint?.hintText ?? hint?.content ?? ''
+}
+
 function ProblemView({ id }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const isStaff = useAuthStore((s) => s.isAdminOrTeacher())
 
   const [selectedOptionId, setSelectedOptionId] = useState(null)
   const [openAnswer, setOpenAnswer] = useState('')
@@ -56,6 +63,25 @@ function ProblemView({ id }) {
         queryClient.invalidateQueries({ queryKey: ['quest-map'] })
         navigate(data?.questId ? `/quests/${data.questId}` : -1)
       }
+    },
+  })
+
+  const hintMutation = useMutation({
+    mutationFn: () => problemApi.hint(id),
+    onSuccess: (res) => {
+      queryClient.setQueryData(['problem', String(id)], (old) =>
+        old
+          ? {
+              ...old,
+              hints: res.hints,
+              hintsUsed: res.hintsUsed,
+              hintCount: res.hintCount,
+            }
+          : old
+      )
+    },
+    onError: (err) => {
+      toast.error(errMessage(err, 'Could not load the hint'))
     },
   })
 
@@ -94,6 +120,11 @@ function ProblemView({ id }) {
     (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
   )
 
+  const hints = Array.isArray(data.hints) ? data.hints : []
+  const hintCount = data.hintCount ?? hints.length
+  const hasMoreHints = hints.length < hintCount
+  const showHintBlock = hintCount > 0
+
   const canSubmit =
     !solved &&
     !submitMutation.isPending &&
@@ -109,12 +140,23 @@ function ProblemView({ id }) {
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto">
-      <Link
-        to={mapLink}
-        className="inline-flex items-center gap-1 text-sm opacity-80 hover:opacity-100"
-      >
-        <ArrowLeft size={16} /> Back to map
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          to={mapLink}
+          className="inline-flex items-center gap-1 text-sm opacity-80 hover:opacity-100"
+        >
+          <ArrowLeft size={16} /> Back to map
+        </Link>
+
+        {isStaff && (
+          <Link
+            to={`/admin/problems/${data.id}/edit`}
+            className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/80 hover:bg-white/5"
+          >
+            <Pencil size={14} /> Edit problem
+          </Link>
+        )}
+      </div>
 
       <div className="card p-5 space-y-4">
         <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -183,6 +225,42 @@ function ProblemView({ id }) {
               if (e.key === 'Enter') handleSubmit()
             }}
           />
+        )}
+
+        {showHintBlock && (
+          <div className="space-y-2">
+            {hints.map((hint, index) => (
+              <div
+                key={index}
+                className="rounded-lg px-4 py-3 border text-sm space-y-1"
+                style={{
+                  borderColor: 'rgba(250,204,21,0.35)',
+                  background: 'rgba(250,204,21,0.08)',
+                }}
+              >
+                <div className="flex items-center gap-2 text-yellow-300 font-semibold">
+                  <Lightbulb size={14} /> Hint {index + 1}
+                </div>
+                <div>
+                  <MathText text={hintText(hint)} />
+                </div>
+              </div>
+            ))}
+
+            {!solved && hasMoreHints && (
+              <button
+                type="button"
+                className="btn-secondary inline-flex items-center gap-2"
+                disabled={hintMutation.isPending}
+                onClick={() => hintMutation.mutate()}
+              >
+                <Lightbulb size={16} />
+                {hintMutation.isPending
+                  ? 'Loading…'
+                  : `Show hint (${hints.length + 1} / ${hintCount})`}
+              </button>
+            )}
+          </div>
         )}
 
         {!solved && result && result.correct === false && (

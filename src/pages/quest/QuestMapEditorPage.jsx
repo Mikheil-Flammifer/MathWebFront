@@ -3,7 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
-  ArrowLeft, Save, RotateCcw, Link2, Move, Trash2, Rocket, CheckCircle2, AlertTriangle,
+  ArrowLeft, Save, RotateCcw, Link2, Move, Trash2, Rocket, CheckCircle2, AlertTriangle, Pencil,
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import { ROLES, getCategoryTheme } from '../../utils/constants'
@@ -182,6 +182,14 @@ function EditorBody({ questId, data, published }) {
     })
   }
 
+  const handleEditProblemClick = (e) => {
+    if (!dirty) return
+    const leave = window.confirm(
+      'You have unsaved map changes. If you open the problem editor now, they will be lost. Continue?'
+    )
+    if (!leave) e.preventDefault()
+  }
+
   const busy = saveMutation.isPending || publishMutation.isPending
 
   return (
@@ -334,6 +342,13 @@ function EditorBody({ questId, data, published }) {
                   />
                   Start node
                 </label>
+                <Link
+                  to={`/admin/problems/${selected.problemId}/edit`}
+                  onClick={handleEditProblemClick}
+                  className="btn-secondary inline-flex items-center gap-1"
+                >
+                  <Pencil size={15} /> Edit problem
+                </Link>
               </>
             ) : (
               <p className="text-sm opacity-70">

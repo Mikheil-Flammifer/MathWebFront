@@ -6,6 +6,7 @@ export const problemApi = {
   create: (data) => api.post('/api/problems', data),
   submit: (payload) =>
     api.post('/api/problems/submit', payload).then((res) => res.data.data),
+  hint: (id) => api.post(`/api/problems/${id}/hint`).then((res) => res.data.data),
   delete: (id) => api.delete(`/api/problems/${id}`),
   uploadQuestionImage: (id, formData) =>
     api.post(`/api/problems/${id}/image/question`, formData, {
