@@ -63,6 +63,7 @@ export default function ProblemEditPage() {
         initial={{
           questId: problem.questId,
           questionText: problem.questionText,
+          embedUrl: problem.embedUrl ?? '',
           problemType: problem.problemType,
           difficultyLevel: problem.difficultyLevel,
           categoryId: problem.categoryId,

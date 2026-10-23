@@ -186,6 +186,19 @@ function ProblemView({ id }) {
           />
         )}
 
+        {data.embedUrl && (
+          <iframe
+            src={data.embedUrl}
+            title="Interactive graph"
+            width="100%"
+            height="450"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin allow-popups"
+            style={{ border: 0 }}
+            className="rounded-lg bg-white"
+          />
+        )}
+
         {isMultiple ? (
           <div className="space-y-2">
             {options.map((opt) => {

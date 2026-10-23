@@ -79,6 +79,7 @@ export default function ProblemForm({
   const [step, setStep] = useState(0);
   const [questId, setQuestId] = useState(String(initial?.questId ?? ''));
   const [questionText, setQuestionText] = useState(initial?.questionText ?? '');
+  const [embedUrl, setEmbedUrl] = useState(initial?.embedUrl ?? '');
   const [problemType, setProblemType] = useState(
     initial?.problemType === 'MULTIPLE_CHOICE' ? 'MULTIPLE_CHOICE' : 'OPEN_ANSWER'
   );
@@ -234,6 +235,7 @@ export default function ProblemForm({
       orderIndex: Number(orderIndex),
       categoryId: Number(categoryId),
       hints: hints.map((h) => h.trim()).filter((h) => h.length > 0),
+      embedUrl: embedUrl.trim() || null,
     };
     if (problemType === 'OPEN_ANSWER') {
       payload.correctAnswer = correctAnswer.trim();
@@ -256,6 +258,7 @@ export default function ProblemForm({
     ['Difficulty', levelLabel || '—', 0],
     ['XP reward', xpReward || '0', 0],
     ['Order in quest', orderIndex || '—', 0],
+    ['Graph link', embedUrl.trim() || '—', 1],
     ['Answer type', problemType === 'OPEN_ANSWER' ? 'Open answer' : 'Multiple choice', 2],
   ];
 
@@ -417,6 +420,19 @@ export default function ProblemForm({
             placeholder="Type the question here…"
           />
           {fieldError('questionText')}
+
+          <div className="border-t border-white/10 pt-5">
+            <label className={labelClass}>Desmos / GeoGebra link (optional)</label>
+            <input
+              className={inputClass}
+              value={embedUrl}
+              placeholder="Paste a Desmos or GeoGebra link"
+              onChange={(e) => setEmbedUrl(e.target.value)}
+            />
+            <p className={helpClass}>
+              Students will see an interactive graph under the question. Leave empty for none.
+            </p>
+          </div>
         </section>
       )}
 
@@ -618,7 +634,7 @@ export default function ProblemForm({
               {summary.map(([label, value, stepIndex]) => (
                 <div key={label} className="flex items-center gap-3 px-4 py-2.5">
                   <dt className="w-36 text-white/50">{label}</dt>
-                  <dd className="flex-1 text-white">{value}</dd>
+                  <dd className="min-w-0 flex-1 break-all text-white">{value}</dd>
                   <button
                     type="button"
                     onClick={() => goTo(stepIndex)}
