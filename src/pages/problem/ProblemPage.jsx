@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { ArrowLeft, CheckCircle2, Lightbulb, Pencil } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Eye, Lightbulb, Pencil } from 'lucide-react'
 import api from '../../api/axios'
 import { problemApi } from '../../api/problemApi'
 import { getCategoryTheme } from '../../utils/constants'
@@ -34,6 +34,9 @@ function ProblemView({ id }) {
   const [openAnswer, setOpenAnswer] = useState('')
   const [result, setResult] = useState(null)
   const [wrongCount, setWrongCount] = useState(0)
+  const [confirmGiveUp, setConfirmGiveUp] = useState(false)
+  const [penalty, setPenalty] = useState(0)
+  const [questDone, setQuestDone] = useState(false)
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['problem', String(id)],
@@ -51,6 +54,7 @@ function ProblemView({ id }) {
         queryClient.invalidateQueries({ queryKey: ['problem', String(id)] })
         queryClient.invalidateQueries({ queryKey: ['quest-map'] })
         queryClient.invalidateQueries({ queryKey: ['quests'] })
+        queryClient.invalidateQueries({ queryKey: ['progress'] })
       } else {
         setWrongCount((c) => c + 1)
         toast.error('Not quite. Try again!')
@@ -79,9 +83,47 @@ function ProblemView({ id }) {
             }
           : old
       )
+      queryClient.invalidateQueries({ queryKey: ['progress'] })
     },
     onError: (err) => {
       toast.error(errMessage(err, 'Could not load the hint'))
+    },
+  })
+
+  const giveUpMutation = useMutation({
+    mutationFn: () => problemApi.giveUp(id),
+    onSuccess: (res) => {
+      setConfirmGiveUp(false)
+      setPenalty(res.xpPenalty ?? 0)
+      queryClient.setQueryData(['problem', String(id)], (old) =>
+        old
+          ? {
+              ...old,
+              answerRevealed: true,
+              correctAnswer: res.correctAnswer,
+              correctOptionId: res.correctOptionId,
+              explanation: res.explanation,
+              explanationImagePath: res.explanationImagePath,
+            }
+          : old
+      )
+      if (res.xpPenalty > 0) toast(`Solution revealed. -${res.xpPenalty} XP`)
+      else toast('Solution revealed')
+      if (res.questCompleted) {
+        setQuestDone(true)
+        toast.success('Quest completed! 🎉')
+      }
+      queryClient.invalidateQueries({ queryKey: ['problem', String(id)] })
+      queryClient.invalidateQueries({ queryKey: ['quest-map'] })
+      queryClient.invalidateQueries({ queryKey: ['quests'] })
+      queryClient.invalidateQueries({ queryKey: ['progress'] })
+    },
+    onError: (err) => {
+      setConfirmGiveUp(false)
+      toast.error(errMessage(err, 'Could not reveal the solution'))
+      if (err?.response?.status === 400) {
+        queryClient.invalidateQueries({ queryKey: ['problem', String(id)] })
+      }
     },
   })
 
@@ -107,13 +149,16 @@ function ProblemView({ id }) {
 
   const theme = getCategoryTheme(data.mainCategoryName)
   const isMultiple = data.problemType === 'MULTIPLE_CHOICE'
+  const revealed = data.answerRevealed === true
   const solved = data.solved === true || result?.correct === true
+  const showSolution = solved || revealed
   const attemptsUsed = result?.attemptsUsed ?? data.attemptsUsed ?? 0
   const explanation = result?.correct ? result.explanation : data.explanation
   const explanationImage = result?.correct
     ? result.explanationImagePath
     : data.explanationImagePath
   const correctAnswer = data.correctAnswer
+  const correctOptionId = data.correctOptionId ?? null
   const mapLink = data.questId ? `/quests/${data.questId}` : '/quests'
 
   const options = [...(data.answerOptions || [])].sort(
@@ -125,8 +170,11 @@ function ProblemView({ id }) {
   const hasMoreHints = hints.length < hintCount
   const showHintBlock = hintCount > 0
 
+  const xpReward = data.xpReward ?? 0
+  const estimatedPenalty = xpReward > 0 ? Math.max(1, Math.round(xpReward / 2)) : 0
+
   const canSubmit =
-    !solved &&
+    !showSolution &&
     !submitMutation.isPending &&
     (isMultiple ? selectedOptionId !== null : openAnswer.trim().length > 0)
 
@@ -170,8 +218,12 @@ function ProblemView({ id }) {
               <span className="opacity-70">· {data.categoryName}</span>
             )}
           </span>
-          <span className="opacity-70">{data.xpReward} XP</span>
-          <span className="opacity-70">Attempt {solved ? attemptsUsed : attemptsUsed + 1}</span>
+          <span className={revealed ? 'text-amber-300' : 'opacity-70'}>
+            {revealed ? '0 XP (answer revealed)' : `${xpReward} XP`}
+          </span>
+          <span className="opacity-70">
+            Attempt {showSolution ? attemptsUsed : attemptsUsed + 1}
+          </span>
         </div>
 
         <p className="text-lg">
@@ -202,18 +254,26 @@ function ProblemView({ id }) {
         {isMultiple ? (
           <div className="space-y-2">
             {options.map((opt) => {
-              const selected = selectedOptionId === opt.id
+              const selected = !showSolution && selectedOptionId === opt.id
+              const isCorrectOption =
+                showSolution && correctOptionId !== null && opt.id === correctOptionId
+              let borderColor = 'rgba(148,163,184,0.3)'
+              let background = 'transparent'
+              if (isCorrectOption) {
+                borderColor = 'rgba(74,222,128,0.7)'
+                background = 'rgba(74,222,128,0.12)'
+              } else if (selected) {
+                borderColor = theme.color
+                background = `${theme.color}22`
+              }
               return (
                 <button
                   key={opt.id}
                   type="button"
-                  disabled={solved}
+                  disabled={showSolution}
                   onClick={() => setSelectedOptionId(opt.id)}
-                  className="w-full text-left rounded-lg px-4 py-3 border transition disabled:opacity-60"
-                  style={{
-                    borderColor: selected ? theme.color : 'rgba(148,163,184,0.3)',
-                    background: selected ? `${theme.color}22` : 'transparent',
-                  }}
+                  className="w-full text-left rounded-lg px-4 py-3 border transition disabled:opacity-80"
+                  style={{ borderColor, background }}
                 >
                   <MathText text={opt.optionText} />
                   {opt.optionImagePath && (
@@ -232,7 +292,7 @@ function ProblemView({ id }) {
             className="input-field w-full"
             placeholder="Your answer"
             value={openAnswer}
-            disabled={solved}
+            disabled={showSolution}
             onChange={(e) => setOpenAnswer(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSubmit()
@@ -260,7 +320,7 @@ function ProblemView({ id }) {
               </div>
             ))}
 
-            {!solved && hasMoreHints && (
+            {!showSolution && hasMoreHints && (
               <button
                 type="button"
                 className="btn-secondary inline-flex items-center gap-2"
@@ -276,24 +336,90 @@ function ProblemView({ id }) {
           </div>
         )}
 
-        {!solved && result && result.correct === false && (
+        {!showSolution && result && result.correct === false && (
           <p className="text-sm text-red-300">
             Wrong answer. Wrong tries this session: {wrongCount}. There is no limit, so try again.
           </p>
         )}
 
-        {!solved && (
-          <button className="btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
-            {submitMutation.isPending ? 'Checking…' : 'Submit answer'}
-          </button>
+        {!showSolution && (
+          <div className="flex flex-wrap items-center gap-3">
+            <button className="btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
+              {submitMutation.isPending ? 'Checking…' : 'Submit answer'}
+            </button>
+
+            {!confirmGiveUp && (
+              <button
+                type="button"
+                className="btn-secondary inline-flex items-center gap-2"
+                onClick={() => setConfirmGiveUp(true)}
+              >
+                <Eye size={16} /> Give up
+              </button>
+            )}
+          </div>
+        )}
+
+        {!showSolution && confirmGiveUp && (
+          <div
+            className="rounded-lg px-4 py-3 border text-sm space-y-3"
+            style={{
+              borderColor: 'rgba(248,113,113,0.4)',
+              background: 'rgba(248,113,113,0.08)',
+            }}
+          >
+            <p>
+              Show the solution?{' '}
+              {estimatedPenalty > 0
+                ? `You will lose about ${estimatedPenalty} XP`
+                : 'This problem has no XP to lose'}{' '}
+              and earn no XP for this problem. This cannot be undone.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={giveUpMutation.isPending}
+                onClick={() => giveUpMutation.mutate()}
+              >
+                {giveUpMutation.isPending ? 'Loading…' : 'Yes, show the solution'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={giveUpMutation.isPending}
+                onClick={() => setConfirmGiveUp(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
-      {solved && (
+      {showSolution && (
         <div className="card p-5 space-y-3">
-          <div className="flex items-center gap-2 text-green-300 font-semibold">
-            <CheckCircle2 size={20} /> Solved
-          </div>
+          {revealed ? (
+            <div className="flex items-center gap-2 text-amber-300 font-semibold">
+              <Eye size={20} /> Answer revealed
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-green-300 font-semibold">
+              <CheckCircle2 size={20} /> Solved
+            </div>
+          )}
+
+          {revealed && (
+            <p className="text-sm opacity-70">
+              No XP for this problem.
+              {penalty > 0 ? ` -${penalty} XP was deducted.` : ''}
+            </p>
+          )}
+
+          {questDone && (
+            <p className="text-sm text-green-300 font-semibold">Quest completed! 🎉</p>
+          )}
+
           {correctAnswer && (
             <p className="text-sm">
               <span className="opacity-70">Answer:</span> <MathText text={correctAnswer} />
@@ -312,7 +438,7 @@ function ProblemView({ id }) {
             />
           )}
           <button className="btn-primary" onClick={() => navigate(mapLink)}>
-            Back to map
+            {revealed ? 'Continue' : 'Back to map'}
           </button>
         </div>
       )}
