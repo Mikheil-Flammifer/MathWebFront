@@ -7,7 +7,10 @@ export default function MobileNav() {
       className="lg:hidden fixed bottom-0 inset-x-0 z-40 glass border-t border-space-500"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <ul className="grid grid-cols-4">
+      <ul
+        className="grid"
+        style={{ gridTemplateColumns: 'repeat(' + NAV_ITEMS.length + ', minmax(0, 1fr))' }}
+      >
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
           <li key={to}>
             <NavLink

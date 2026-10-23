@@ -27,7 +27,7 @@ function NodePanel({ node, onOpen }) {
           )}
         </div>
         <p className="text-sm opacity-80">
-          {node.xpReward} XP · Attempts {node.attemptsUsed}/{node.maxAttempts} ·{' '}
+          {node.xpReward} XP · Attempts {node.attemptsUsed} ·{' '}
           {node.status === NODE_STATUS.SOLVED ? 'Solved' : locked ? 'Locked' : 'Open'}
         </p>
         {cooling && (

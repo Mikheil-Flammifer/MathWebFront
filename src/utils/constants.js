@@ -49,3 +49,16 @@ export const DEFAULT_CATEGORY_THEME = { color: '#94a3b8', label: 'Other' }
 export function getCategoryTheme(mainCategoryName) {
   return MAIN_CATEGORY_THEME[mainCategoryName] ?? DEFAULT_CATEGORY_THEME
 }
+
+export const TOPIC_LEVEL = {
+  NOT_STARTED: { label: 'Not started', badge: 'badge-gray' },
+  LEARNING:    { label: 'Learning',    badge: 'badge-warning' },
+  MASTERED:    { label: 'Mastered',    badge: 'badge-success' },
+}
+
+export const MISTAKE_REASON = {
+  GAVE_UP:              { label: 'Gave up',            badge: 'badge-gray' },
+  UNSOLVED_WRONG:       { label: 'Not solved yet',     badge: 'badge-warning' },
+  SOLVED_WITH_HINTS:    { label: 'Solved with hints',  badge: 'badge-sky' },
+  SOLVED_AFTER_RETRIES: { label: 'Solved after retries', badge: 'badge-sky' },
+}

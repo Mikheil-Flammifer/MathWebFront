@@ -24,6 +24,8 @@ import QuestMapEditorPage from './pages/quest/QuestMapEditorPage'
 import ProblemPage from './pages/problem/ProblemPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import SubscriptionPage from './pages/subscription/SubscriptionPage'
+import ProgressPage from './pages/progress/ProgressPage'
+import MistakesPage from './pages/progress/MistakesPage'
 
 // Layout
 import MainLayout from './components/layout/MainLayout'
@@ -71,6 +73,8 @@ export default function App() {
         <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />\
 
         <Route path="/problems/:id" element={<ProblemPage />} />
+        <Route path="/progress" element={<ProgressPage />} />
+        <Route path="/progress/mistakes" element={<MistakesPage />} />
         <Route path="/admin/problems/new" element={<AdminProblemCreatePage />} />
         <Route path="/admin/problems/:id/edit" element={<AdminProblemEditPage />} />
 

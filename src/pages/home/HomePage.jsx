@@ -5,6 +5,7 @@ import VideoCard from '../../components/video/VideoCard'
 import EmptyState from '../../components/common/EmptyState'
 import CategoryFilterBar from '../../components/category/CategoryFilterBar'
 import SortDropdown from '../../components/category/SortDropdown'
+import StreakChip from '../../components/progress/StreakChip'
 
 function CardSkeleton() {
   return (
@@ -44,6 +45,8 @@ export default function HomePage() {
         </p>
       </div>
 
+      {!query && <StreakChip />}
+
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <CategoryFilterBar categoryId={categoryId} onSelect={(id) => updateParam('categoryId', id)} />
         <SortDropdown value={sort} onChange={(v) => updateParam('sort', v)} />
@@ -77,9 +80,5 @@ export default function HomePage() {
         </>
       )}
     </div>
-
   )
-
-
-
 }
