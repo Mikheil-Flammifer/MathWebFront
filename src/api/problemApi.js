@@ -1,5 +1,15 @@
 import api from './axios';
 
+// kind is 'question' or 'explanation'
+const IMAGE_KINDS = ['question', 'explanation'];
+
+function imageUrl(id, kind) {
+  if (!IMAGE_KINDS.includes(kind)) {
+    throw new Error('Unknown image kind: ' + kind);
+  }
+  return `/api/problems/${id}/image/${kind}`;
+}
+
 export const problemApi = {
   getByQuest: (questId) => api.get(`/api/problems/quest/${questId}`),
   getById: (id) => api.get(`/api/problems/${id}`).then((res) => res.data.data),
@@ -10,14 +20,15 @@ export const problemApi = {
   giveUp: (id) =>
     api.post(`/api/problems/${id}/give-up`).then((res) => res.data.data),
   delete: (id) => api.delete(`/api/problems/${id}`),
-  uploadQuestionImage: (id, formData) =>
-    api.post(`/api/problems/${id}/image/question`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }),
-  uploadExplanationImage: (id, formData) =>
-    api.post(`/api/problems/${id}/image/explanation`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }),
+
+  // Staff only. Returns the full ProblemResponse.
+  uploadImage: (id, kind, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(imageUrl(id, kind), formData).then((res) => res.data.data);
+  },
+  deleteImage: (id, kind) =>
+    api.delete(imageUrl(id, kind)).then((res) => res.data.data),
 };
 
 export const problemStaffApi = {

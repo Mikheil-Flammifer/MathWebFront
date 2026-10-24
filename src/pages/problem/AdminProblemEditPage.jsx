@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { questApi } from '../../api/questApi';
 import { problemStaffApi } from '../../api/problemApi';
+import { applyProblemImages } from '../../utils/applyProblemImages';
 import ProblemForm from '../../components/problem/ProblemForm';
 
 export default function ProblemEditPage() {
@@ -20,10 +22,20 @@ export default function ProblemEditPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: (payload) => problemStaffApi.update(id, payload),
-    onSuccess: (_data, payload) => {
+    mutationFn: async ({ payload, images }) => {
+      const saved = await problemStaffApi.update(id, payload);
+      const failed = await applyProblemImages(id, images);
+      return { saved, failed };
+    },
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries();
-      navigate(`/quests/${payload.questId}/edit`);
+      if (result.failed.length > 0) {
+        toast.error(
+          'Saved, but an image failed: ' + result.failed.join('; ')
+        );
+        return;
+      }
+      navigate(`/quests/${variables.payload.questId}/edit`);
     },
   });
 
@@ -71,6 +83,8 @@ export default function ProblemEditPage() {
           orderIndex: problem.orderIndex,
           explanation: problem.explanation ?? '',
           correctAnswer: problem.correctAnswer ?? '',
+          questionImagePath: problem.questionImagePath ?? null,
+          explanationImagePath: problem.explanationImagePath ?? null,
           hints: (problem.hints ?? []).map((h) =>
             typeof h === 'string' ? h : h?.text ?? ''
           ),
@@ -82,7 +96,7 @@ export default function ProblemEditPage() {
         submitLabel="Save changes"
         submitting={mutation.isPending}
         error={errorMessage}
-        onSubmit={(payload) => mutation.mutate(payload)}
+        onSubmit={(payload, images) => mutation.mutate({ payload, images })}
       />
     </div>
   );

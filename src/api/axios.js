@@ -2,25 +2,39 @@ import axios from 'axios'
 import useAuthStore from '../store/authStore'
 import { API_BASE_URL } from '../utils/constants'
 
+const CSRF_HEADER = { 'X-Requested-With': 'XMLHttpRequest' }
+const SAFE_METHODS = ['get', 'head', 'options']
+
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true, // the browser sends the httpOnly cookies
   headers: { 'Content-Type': 'application/json' },
 })
 
-// ── Attach access token ─────────────────────────────────────────────
+// CSRF protection: every request that changes data carries this header.
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  const method = (config.method || 'get').toLowerCase()
+  if (!SAFE_METHODS.includes(method)) {
+    config.headers['X-Requested-With'] = 'XMLHttpRequest'
+  }
   return config
 })
 
-// ── Refresh on 401 (one refresh at a time, others wait) ─────────────
-let isRefreshing = false
-let waiting = []
+// One refresh at a time: requests that fail together share the same refresh call.
+let refreshPromise = null
 
-const flushQueue = (error, token = null) => {
-  waiting.forEach(({ resolve, reject }) => (error ? reject(error) : resolve(token)))
-  waiting = []
+const refreshSession = () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${API_BASE_URL}/api/auth/refresh`, null, {
+        withCredentials: true,
+        headers: CSRF_HEADER,
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
 }
 
 // Login / register / OTP etc. return 401 for bad input. That is NOT an expired session.
@@ -37,36 +51,17 @@ api.interceptors.response.use(
     }
     original._retry = true
 
-    const { refreshToken, setTokens, logout } = useAuthStore.getState()
-    if (!refreshToken) {
-      logout()
+    const { isAuthenticated, logout } = useAuthStore.getState()
+    if (!isAuthenticated) {
       return Promise.reject(error)
     }
 
-    // Another request is already refreshing: wait for it, then retry
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => waiting.push({ resolve, reject })).then(
-        (token) => {
-          original.headers.Authorization = `Bearer ${token}`
-          return api(original)
-        }
-      )
-    }
-
-    isRefreshing = true
     try {
-      const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken })
-      const { accessToken, refreshToken: newRefresh } = data.data
-      setTokens(accessToken, newRefresh ?? refreshToken)
-      flushQueue(null, accessToken)
-      original.headers.Authorization = `Bearer ${accessToken}`
+      await refreshSession() // the server sets new cookies, 204 with no body
       return api(original)
     } catch (refreshError) {
-      flushQueue(refreshError)
-      logout() // ProtectedRoute reacts to the store and redirects to /login, no page reload
+      logout() // ProtectedRoute reacts to the store and redirects to /login
       return Promise.reject(refreshError)
-    } finally {
-      isRefreshing = false
     }
   }
 )

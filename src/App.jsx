@@ -29,6 +29,7 @@ import MistakesPage from './pages/progress/MistakesPage'
 
 // Layout
 import MainLayout from './components/layout/MainLayout'
+import StaffRoute from './components/layout/StaffRoute'
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -70,20 +71,23 @@ export default function App() {
 
         <Route path="/quests" element={<QuestMapPage />} />
         <Route path="/quests/:id" element={<QuestDetailPage />} />
-        <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />\
 
         <Route path="/problems/:id" element={<ProblemPage />} />
         <Route path="/progress" element={<ProgressPage />} />
         <Route path="/progress/mistakes" element={<MistakesPage />} />
-        <Route path="/admin/problems/new" element={<AdminProblemCreatePage />} />
-        <Route path="/admin/problems/:id/edit" element={<AdminProblemEditPage />} />
 
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/subscribe" element={<SubscriptionPage />} />
 
-        <Route path="/admin/quests" element={<AdminQuestsPage />} />
-        <Route path="/admin/quests/new" element={<AdminQuestCreatePage />} />
-        <Route path="/admin/quests/:id/settings" element={<AdminQuestSettingsPage />} />
+        {/* Staff only: ADMIN or TEACHER */}
+        <Route element={<StaffRoute />}>
+          <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />
+          <Route path="/admin/problems/new" element={<AdminProblemCreatePage />} />
+          <Route path="/admin/problems/:id/edit" element={<AdminProblemEditPage />} />
+          <Route path="/admin/quests" element={<AdminQuestsPage />} />
+          <Route path="/admin/quests/new" element={<AdminQuestCreatePage />} />
+          <Route path="/admin/quests/:id/settings" element={<AdminQuestSettingsPage />} />
+        </Route>
       </Route>
 
       {/* Catch all */}

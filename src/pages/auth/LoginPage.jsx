@@ -25,8 +25,8 @@ export default function LoginPage() {
     setError('')
     try {
       const { data } = await authApi.login({ email: email.trim(), password })
-      const { accessToken, refreshToken, user } = data.data
-      setAuth(user, accessToken, refreshToken)
+      const { user } = data.data
+      setAuth(user)
       toast.success(`Welcome back, ${user.firstName}!`)
       navigate('/home', { replace: true })
     } catch (err) {

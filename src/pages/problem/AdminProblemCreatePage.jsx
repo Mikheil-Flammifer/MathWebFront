@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { questApi } from '../../api/questApi';
 import { problemStaffApi } from '../../api/problemApi';
+import { applyProblemImages } from '../../utils/applyProblemImages';
 import ProblemForm from '../../components/problem/ProblemForm';
 
 export default function ProblemCreatePage() {
@@ -16,10 +18,21 @@ export default function ProblemCreatePage() {
   });
 
   const mutation = useMutation({
-    mutationFn: (payload) => problemStaffApi.create(payload),
-    onSuccess: (_data, payload) => {
+    mutationFn: async ({ payload, images }) => {
+      const saved = await problemStaffApi.create(payload);
+      const failed = await applyProblemImages(saved.id, images);
+      return { saved, failed };
+    },
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries();
-      navigate(`/quests/${payload.questId}/edit`);
+      if (result.failed.length > 0) {
+        toast.error(
+          'Problem created, but an image failed: ' + result.failed.join('; ')
+        );
+        navigate(`/admin/problems/${result.saved.id}/edit`);
+        return;
+      }
+      navigate(`/quests/${variables.payload.questId}/edit`);
     },
   });
 
@@ -54,7 +67,7 @@ export default function ProblemCreatePage() {
         submitLabel="Create problem"
         submitting={mutation.isPending}
         error={errorMessage}
-        onSubmit={(payload) => mutation.mutate(payload)}
+        onSubmit={(payload, images) => mutation.mutate({ payload, images })}
       />
     </div>
   );

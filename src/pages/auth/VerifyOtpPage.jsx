@@ -41,7 +41,7 @@ export default function VerifyOtpPage() {
       const d = data.data
       if (d?.accessToken) {
         // backend logged us in right after verification
-        setAuth(d.user, d.accessToken, d.refreshToken)
+        setAuth(d.user)
         toast.success('Email verified. Welcome to MathWeb!')
         navigate('/home', { replace: true })
       } else {
