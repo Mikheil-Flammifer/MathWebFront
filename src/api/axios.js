@@ -3,21 +3,11 @@ import useAuthStore from '../store/authStore'
 import { API_BASE_URL } from '../utils/constants'
 
 const CSRF_HEADER = { 'X-Requested-With': 'XMLHttpRequest' }
-const SAFE_METHODS = ['get', 'head', 'options']
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true, // the browser sends the httpOnly cookies
-  headers: { 'Content-Type': 'application/json' },
-})
-
-// CSRF protection: every request that changes data carries this header.
-api.interceptors.request.use((config) => {
-  const method = (config.method || 'get').toLowerCase()
-  if (!SAFE_METHODS.includes(method)) {
-    config.headers['X-Requested-With'] = 'XMLHttpRequest'
-  }
-  return config
+  headers: { 'Content-Type': 'application/json', ...CSRF_HEADER },
 })
 
 // One refresh at a time: requests that fail together share the same refresh call.
@@ -26,7 +16,7 @@ let refreshPromise = null
 const refreshSession = () => {
   if (!refreshPromise) {
     refreshPromise = axios
-      .post(`${API_BASE_URL}/api/auth/refresh`, null, {
+      .post(`${API_BASE_URL}/api/auth/refresh`, {}, {
         withCredentials: true,
         headers: CSRF_HEADER,
       })
@@ -57,7 +47,7 @@ api.interceptors.response.use(
     }
 
     try {
-      await refreshSession() // the server sets new cookies, 204 with no body
+      await refreshSession() // the server sets new cookies
       return api(original)
     } catch (refreshError) {
       logout() // ProtectedRoute reacts to the store and redirects to /login
