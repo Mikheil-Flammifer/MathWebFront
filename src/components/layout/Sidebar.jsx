@@ -2,7 +2,7 @@ import { NavLink, Link } from 'react-router-dom'
 import { ShieldCheck, Sparkles } from 'lucide-react'
 import Logo from '../common/Logo'
 import useAuthStore from '../../store/authStore'
-import { API_BASE_URL, ROLES } from '../../utils/constants'
+import { ADMIN_DASHBOARD_URL, ROLES } from '../../utils/constants'
 import { NAV_ITEMS } from './navItems'
 
 export default function Sidebar() {
@@ -24,10 +24,15 @@ export default function Sidebar() {
           </NavLink>
         ))}
 
-        {isAdmin && (
+        {isAdmin && ADMIN_DASHBOARD_URL && (
           <>
             <p className="mono-label px-3 pt-5 pb-2">ADMIN</p>
-            <a href={`${API_BASE_URL}/admin/login`} className="nav-item">
+            <a
+              href={ADMIN_DASHBOARD_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="nav-item"
+            >
               <ShieldCheck size={18} />
               Admin panel
             </a>
