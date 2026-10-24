@@ -1,9 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { LogOut, User, Settings, BookOpen, Home,
-         Map, Bell } from 'lucide-react'
+         Map } from 'lucide-react'
 import { useState } from 'react'
 import useAuthStore from '../../store/authStore'
 import { authApi } from '../../api/authApi'
+import { ADMIN_DASHBOARD_URL } from '../../utils/constants'
 import Avatar from '../common/Avatar'
 import toast from 'react-hot-toast'
 
@@ -48,12 +49,12 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
-            {/* Admin panel link */}
-            {isAdmin() && (
+            {/* Admin panel link: only when the address is configured */}
+            {isAdmin() && ADMIN_DASHBOARD_URL && (
               <a
-                href="http://localhost:8080/admin/dashboard"
+                href={ADMIN_DASHBOARD_URL}
                 target="_blank"
-                rel="noreferrer"
+                rel="noreferrer noopener"
                 className="hidden md:flex items-center gap-1.5
                            text-sm text-gray-600 hover:text-primary-600
                            transition px-3 py-1.5 rounded-lg
