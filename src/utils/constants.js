@@ -1,5 +1,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'MathWeb'
+export const ADMIN_DASHBOARD_URL = import.meta.env.VITE_ADMIN_URL || ''
 
 // Zustand persist key (holds user + tokens)
 export const USER_KEY = 'mathweb_user'
