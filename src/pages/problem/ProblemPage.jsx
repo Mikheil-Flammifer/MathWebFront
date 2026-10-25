@@ -1,767 +1,452 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import api from '../../api/axios';
-import RichMathInput from '../../components/RichMathInput';
-import ProblemPreview from '../../components/problem/ProblemPreview';
-import ImageUploadField from '../../components/problem/ImageUploadField';
+import { useState } from 'react'
+import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
+import { ArrowLeft, CheckCircle2, Eye, Lightbulb, Pencil } from 'lucide-react'
+import api from '../../api/axios'
+import { problemApi } from '../../api/problemApi'
+import { getCategoryTheme } from '../../utils/constants'
+import useAuthStore from '../../store/authStore'
+import MathText from '../../components/MathText'
 
-const LEVELS = [
-  ['LEVEL_1_BEGINNER', 'Level 1 · Beginner'],
-  ['LEVEL_2_ELEMENTARY', 'Level 2 · Elementary'],
-  ['LEVEL_3_INTERMEDIATE', 'Level 3 · Intermediate'],
-  ['LEVEL_4_UPPER_INTERMEDIATE', 'Level 4 · Upper intermediate'],
-  ['LEVEL_5_ADVANCED', 'Level 5 · Advanced'],
-  ['LEVEL_6_EXPERT', 'Level 6 · Expert'],
-  ['LEVEL_7_MASTER', 'Level 7 · Master'],
-];
-
-const TYPES = [
-  ['OPEN_ANSWER', 'Open answer', 'Students type their answer in a text box.'],
-  ['MULTIPLE_CHOICE', 'Multiple choice', 'Students pick one of several options.'],
-];
-
-const STEPS = [
-  { id: 'basics', label: 'Basics' },
-  { id: 'question', label: 'Question' },
-  { id: 'answer', label: 'Answer' },
-  { id: 'hints', label: 'Hints' },
-  { id: 'review', label: 'Review' },
-];
-
-// Which step each validation error belongs to.
-const ERROR_STEP = {
-  questId: 0,
-  categoryId: 0,
-  xpReward: 0,
-  orderIndex: 0,
-  questionText: 1,
-  correctAnswer: 2,
-  options: 2,
-};
-
-const MAX_HINTS = 3;
-const LAST_STEP = STEPS.length - 1;
-
-const inputClass =
-  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/40 focus:border-violet-400 focus:outline-none';
-const cardClass = 'space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-6';
-const labelClass = 'mb-1 block text-sm font-medium text-white/80';
-const helpClass = 'mt-1 text-xs text-white/50';
-const primaryBtn =
-  'rounded-lg bg-violet-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-400 disabled:opacity-50';
-const ghostBtn =
-  'rounded-lg border border-white/15 px-5 py-2.5 text-sm text-white/80 hover:bg-white/5 disabled:opacity-30';
-
-const emptyOptions = () => [
-  { optionText: '', isCorrect: false },
-  { optionText: '', isCorrect: false },
-  { optionText: '', isCorrect: false },
-  { optionText: '', isCorrect: false },
-];
-
-function describeImage(savedUrl, file, removed) {
-  if (file) return 'New: ' + file.name;
-  if (removed) return 'Will be removed';
-  if (savedUrl) return 'Saved image';
-  return '—';
+function fileUrl(path) {
+  if (!path) return null
+  if (/^https?:\/\//i.test(path)) return path
+  const base = (api.defaults.baseURL || '').replace(/\/$/, '')
+  return `${base}/${path.replace(/^\//, '')}`
 }
 
-function StepHeader({ title, subtitle }) {
-  return (
-    <div>
-      <h2 className="text-xl font-semibold text-white">{title}</h2>
-      <p className="mt-1 text-sm text-white/60">{subtitle}</p>
-    </div>
-  );
+function errMessage(err, fallback) {
+  return err?.response?.data?.message || err?.message || fallback
 }
 
-export default function ProblemForm({
-  initial,
-  quests = [],
-  lockQuest = false,
-  onSubmit,
-  submitting = false,
-  error = '',
-  submitLabel = 'Save',
-}) {
-  const [step, setStep] = useState(0);
-  const [questId, setQuestId] = useState(String(initial?.questId ?? ''));
-  const [questionText, setQuestionText] = useState(initial?.questionText ?? '');
-  const [embedUrl, setEmbedUrl] = useState(initial?.embedUrl ?? '');
-  const [problemType, setProblemType] = useState(
-    initial?.problemType === 'MULTIPLE_CHOICE' ? 'MULTIPLE_CHOICE' : 'OPEN_ANSWER'
-  );
-  const [difficultyLevel, setDifficultyLevel] = useState(
-    initial?.difficultyLevel ?? 'LEVEL_1_BEGINNER'
-  );
-  const [categoryId, setCategoryId] = useState(String(initial?.categoryId ?? ''));
-  const [xpReward, setXpReward] = useState(String(initial?.xpReward ?? 10));
-  const [orderIndex, setOrderIndex] = useState(String(initial?.orderIndex ?? 1));
-  const [explanation, setExplanation] = useState(initial?.explanation ?? '');
-  const [correctAnswer, setCorrectAnswer] = useState(initial?.correctAnswer ?? '');
-  const [hints, setHints] = useState(
-    Array.isArray(initial?.hints) ? initial.hints.slice(0, MAX_HINTS) : []
-  );
-  const [options, setOptions] = useState(
-    initial?.answerOptions && initial.answerOptions.length > 0
-      ? initial.answerOptions
-      : emptyOptions()
-  );
-  const [errors, setErrors] = useState({});
+function hintText(hint) {
+  if (typeof hint === 'string') return hint
+  return hint?.text ?? hint?.hintText ?? hint?.content ?? ''
+}
 
-  // Images: saved URLs come from the server, files are picked but not uploaded yet.
-  const questionImageUrl = initial?.questionImagePath ?? null;
-  const explanationImageUrl = initial?.explanationImagePath ?? null;
-  const [questionFile, setQuestionFile] = useState(null);
-  const [questionRemoved, setQuestionRemoved] = useState(false);
-  const [explanationFile, setExplanationFile] = useState(null);
-  const [explanationRemoved, setExplanationRemoved] = useState(false);
+function ProblemView({ id }) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const isStaff = useAuthStore((s) => s.isAdminOrTeacher())
 
-  const { data: categoryTree = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => api.get('/api/categories').then((res) => res.data.data),
-  });
+  const [selectedOptionId, setSelectedOptionId] = useState(null)
+  const [openAnswer, setOpenAnswer] = useState('')
+  const [result, setResult] = useState(null)
+  const [wrongCount, setWrongCount] = useState(0)
+  const [confirmGiveUp, setConfirmGiveUp] = useState(false)
+  const [penalty, setPenalty] = useState(0)
+  const [questDone, setQuestDone] = useState(false)
 
-  const subsOf = (main) =>
-    main.subcategories || main.subCategories || main.children || [];
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['problem', String(id)],
+    queryFn: () => problemApi.getById(id),
+    retry: false,
+  })
 
-  let mainCategoryName = '';
-  let categoryName = '';
-  categoryTree.forEach((main) => {
-    subsOf(main).forEach((sub) => {
-      if (String(sub.id) === categoryId) {
-        mainCategoryName = main.name;
-        categoryName = sub.name;
+  const submitMutation = useMutation({
+    mutationFn: (payload) => problemApi.submit(payload),
+    onSuccess: (res) => {
+      setResult(res)
+      if (res.correct) {
+        toast.success(res.xpEarned ? `Correct! +${res.xpEarned} XP` : 'Correct!')
+        if (res.questCompleted) toast.success('Quest completed! 🎉')
+        queryClient.invalidateQueries({ queryKey: ['problem', String(id)] })
+        queryClient.invalidateQueries({ queryKey: ['quest-map'] })
+        queryClient.invalidateQueries({ queryKey: ['quests'] })
+        queryClient.invalidateQueries({ queryKey: ['progress'] })
+      } else {
+        setWrongCount((c) => c + 1)
+        toast.error('Not quite. Try again!')
       }
-    });
-  });
+    },
+    onError: (err) => {
+      const status = err?.response?.status
+      toast.error(errMessage(err, 'Could not submit answer'))
+      if (status === 400) {
+        queryClient.invalidateQueries({ queryKey: ['quest-map'] })
+        navigate(data?.questId ? `/quests/${data.questId}` : -1)
+      }
+    },
+  })
 
-  const levelLabel = LEVELS.find(([value]) => value === difficultyLevel)?.[1] ?? '';
-  const questTitle = quests.find((q) => String(q.id) === questId)?.title ?? '';
+  const hintMutation = useMutation({
+    mutationFn: () => problemApi.hint(id),
+    onSuccess: (res) => {
+      queryClient.setQueryData(['problem', String(id)], (old) =>
+        old
+          ? {
+              ...old,
+              hints: res.hints,
+              hintsUsed: res.hintsUsed,
+              hintCount: res.hintCount,
+            }
+          : old
+      )
+      queryClient.invalidateQueries({ queryKey: ['progress'] })
+    },
+    onError: (err) => {
+      toast.error(errMessage(err, 'Could not load the hint'))
+    },
+  })
 
-  const handleQuestChange = (value) => {
-    setQuestId(value);
-    const q = quests.find((x) => String(x.id) === value);
-    if (q && !lockQuest) {
-      setDifficultyLevel(q.difficultyLevel);
-      setOrderIndex(String((q.totalProblems ?? 0) + 1));
-    }
-  };
+  const giveUpMutation = useMutation({
+    mutationFn: () => problemApi.giveUp(id),
+    onSuccess: (res) => {
+      setConfirmGiveUp(false)
+      setPenalty(res.xpPenalty ?? 0)
+      queryClient.setQueryData(['problem', String(id)], (old) =>
+        old
+          ? {
+              ...old,
+              answerRevealed: true,
+              correctAnswer: res.correctAnswer,
+              correctOptionId: res.correctOptionId,
+              explanation: res.explanation,
+              explanationImagePath: res.explanationImagePath,
+            }
+          : old
+      )
+      if (res.xpPenalty > 0) toast(`Solution revealed. -${res.xpPenalty} XP`)
+      else toast('Solution revealed')
+      if (res.questCompleted) {
+        setQuestDone(true)
+        toast.success('Quest completed! 🎉')
+      }
+      queryClient.invalidateQueries({ queryKey: ['problem', String(id)] })
+      queryClient.invalidateQueries({ queryKey: ['quest-map'] })
+      queryClient.invalidateQueries({ queryKey: ['quests'] })
+      queryClient.invalidateQueries({ queryKey: ['progress'] })
+    },
+    onError: (err) => {
+      setConfirmGiveUp(false)
+      toast.error(errMessage(err, 'Could not reveal the solution'))
+      if (err?.response?.status === 400) {
+        queryClient.invalidateQueries({ queryKey: ['problem', String(id)] })
+      }
+    },
+  })
 
-  const pickQuestionImage = (file) => {
-    setQuestionFile(file);
-    setQuestionRemoved(false);
-  };
+  if (isLoading) return <div className="p-8 opacity-70">Loading problem…</div>
 
-  const removeQuestionImage = () => {
-    if (questionFile) {
-      setQuestionFile(null);
-    } else {
-      setQuestionRemoved(true);
-    }
-  };
+  if (isError) {
+    const status = error?.response?.status
+    return (
+      <div className="p-8 space-y-4">
+        <p>
+          {status === 400
+            ? errMessage(error, 'This problem is locked.')
+            : status === 404
+              ? 'Problem not found.'
+              : 'Couldn’t load this problem.'}
+        </p>
+        <button className="btn-primary" onClick={() => navigate(-1)}>
+          Back to map
+        </button>
+      </div>
+    )
+  }
 
-  const pickExplanationImage = (file) => {
-    setExplanationFile(file);
-    setExplanationRemoved(false);
-  };
+  const theme = getCategoryTheme(data.mainCategoryName)
+  const isMultiple = data.problemType === 'MULTIPLE_CHOICE'
+  const revealed = data.answerRevealed === true
+  const solved = data.solved === true || result?.correct === true
+  const showSolution = solved || revealed
+  const attemptsUsed = result?.attemptsUsed ?? data.attemptsUsed ?? 0
+  const explanation = result?.correct ? result.explanation : data.explanation
+  const explanationImage = result?.correct
+    ? result.explanationImagePath
+    : data.explanationImagePath
+  const correctAnswer = data.correctAnswer
+  const correctOptionId = data.correctOptionId ?? null
+  const mapLink = data.questId ? `/quests/${data.questId}` : '/quests'
 
-  const removeExplanationImage = () => {
-    if (explanationFile) {
-      setExplanationFile(null);
-    } else {
-      setExplanationRemoved(true);
-    }
-  };
+  const options = [...(data.answerOptions || [])].sort(
+    (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+  )
 
-  const setOptionText = (index, text) => {
-    setOptions((prev) =>
-      prev.map((o, i) => (i === index ? { ...o, optionText: text } : o))
-    );
-  };
+  const hints = Array.isArray(data.hints) ? data.hints : []
+  const hintCount = data.hintCount ?? hints.length
+  const hasMoreHints = hints.length < hintCount
+  const showHintBlock = hintCount > 0
 
-  const setCorrect = (index) => {
-    setOptions((prev) => prev.map((o, i) => ({ ...o, isCorrect: i === index })));
-  };
+  const xpReward = data.xpReward ?? 0
+  const estimatedPenalty = xpReward > 0 ? Math.max(1, Math.round(xpReward / 2)) : 0
 
-  const addOption = () => {
-    setOptions((prev) => [...prev, { optionText: '', isCorrect: false }]);
-  };
+  const canSubmit =
+    !showSolution &&
+    !submitMutation.isPending &&
+    (isMultiple ? selectedOptionId !== null : openAnswer.trim().length > 0)
 
-  const removeOption = (index) => {
-    setOptions((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const setHintText = (index, text) => {
-    setHints((prev) => prev.map((h, i) => (i === index ? text : h)));
-  };
-
-  const addHint = () => {
-    setHints((prev) => (prev.length >= MAX_HINTS ? prev : [...prev, '']));
-  };
-
-  const removeHint = (index) => {
-    setHints((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const moveHint = (index, direction) => {
-    setHints((prev) => {
-      const target = index + direction;
-      if (target < 0 || target >= prev.length) return prev;
-      const next = [...prev];
-      const temp = next[index];
-      next[index] = next[target];
-      next[target] = temp;
-      return next;
-    });
-  };
-
-  const getErrors = () => {
-    const next = {};
-    if (!questId) next.questId = 'Choose a quest';
-    if (!categoryId) next.categoryId = 'Choose a category';
-    const xp = Number(xpReward);
-    if (!Number.isInteger(xp) || xp < 0) next.xpReward = 'XP must be 0 or more';
-    const oi = Number(orderIndex);
-    if (!Number.isInteger(oi) || oi < 1) next.orderIndex = 'Order must be 1 or more';
-    if (!questionText.trim()) next.questionText = 'Write the question first';
-
-    if (problemType === 'OPEN_ANSWER') {
-      if (!correctAnswer.trim()) next.correctAnswer = 'Correct answer is required';
-    } else {
-      const filled = options.filter((o) => o.optionText.trim());
-      const correctCount = filled.filter((o) => o.isCorrect).length;
-      if (filled.length < 2) next.options = 'Add at least 2 options';
-      else if (correctCount !== 1) next.options = 'Mark exactly one correct option';
-    }
-    return next;
-  };
-
-  const goTo = (index) => {
-    setErrors({});
-    setStep(index);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const next = () => {
-    const all = getErrors();
-    const here = {};
-    Object.keys(all).forEach((key) => {
-      if (ERROR_STEP[key] === step) here[key] = all[key];
-    });
-    if (Object.keys(here).length > 0) {
-      setErrors(here);
-      return;
-    }
-    goTo(step + 1);
-  };
-
-  const save = () => {
-    const all = getErrors();
-    const keys = Object.keys(all);
-    if (keys.length > 0) {
-      const first = Math.min(...keys.map((key) => ERROR_STEP[key]));
-      setErrors(all);
-      setStep(first);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    const payload = {
-      questId: Number(questId),
-      questionText: questionText.trim(),
-      problemType,
-      difficultyLevel,
-      explanation: explanation.trim(),
-      xpReward: Number(xpReward),
-      orderIndex: Number(orderIndex),
-      categoryId: Number(categoryId),
-      hints: hints.map((h) => h.trim()).filter((h) => h.length > 0),
-      embedUrl: embedUrl.trim() || null,
-    };
-    if (problemType === 'OPEN_ANSWER') {
-      payload.correctAnswer = correctAnswer.trim();
-    } else {
-      payload.answerOptions = options
-        .filter((o) => o.optionText.trim())
-        .map((o) => ({ optionText: o.optionText.trim(), isCorrect: !!o.isCorrect }));
-    }
-
-    const images = {
-      question: { file: questionFile, removed: questionRemoved },
-      explanation: { file: explanationFile, removed: explanationRemoved },
-    };
-    onSubmit(payload, images);
-  };
-
-  const fieldError = (key) =>
-    errors[key] ? <p className="mt-1 text-xs text-red-400">{errors[key]}</p> : null;
-
-  const pending = step === LAST_STEP ? getErrors() : {};
-
-  const summary = [
-    ['Quest', questTitle || '—', 0],
-    ['Category', categoryName ? `${mainCategoryName} · ${categoryName}` : '—', 0],
-    ['Difficulty', levelLabel || '—', 0],
-    ['XP reward', xpReward || '0', 0],
-    ['Order in quest', orderIndex || '—', 0],
-    ['Graph link', embedUrl.trim() || '—', 1],
-    ['Question image', describeImage(questionImageUrl, questionFile, questionRemoved), 1],
-    ['Answer type', problemType === 'OPEN_ANSWER' ? 'Open answer' : 'Multiple choice', 2],
-    [
-      'Explanation image',
-      describeImage(explanationImageUrl, explanationFile, explanationRemoved),
-      3,
-    ],
-  ];
+  const handleSubmit = () => {
+    if (!canSubmit) return
+    const payload = isMultiple
+      ? { problemId: data.id, selectedOptionId }
+      : { problemId: data.id, openAnswer: openAnswer.trim() }
+    submitMutation.mutate(payload)
+  }
 
   return (
-    <form
-      onSubmit={(e) => e.preventDefault()}
-      className="mx-auto max-w-3xl space-y-6"
-    >
-      <ol className="flex items-center">
-        {STEPS.map((s, i) => (
-          <li
-            key={s.id}
-            className={i < LAST_STEP ? 'flex flex-1 items-center' : 'flex items-center'}
+    <div className="space-y-4 max-w-3xl mx-auto">
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          to={mapLink}
+          className="inline-flex items-center gap-1 text-sm opacity-80 hover:opacity-100"
+        >
+          <ArrowLeft size={16} /> Back to map
+        </Link>
+
+        {isStaff && (
+          <Link
+            to={`/admin/problems/${data.id}/edit`}
+            className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/80 hover:bg-white/5"
           >
-            <button
-              type="button"
-              onClick={() => goTo(i)}
-              className="flex items-center gap-2"
-            >
-              <span
-                className={
-                  i === step
-                    ? 'flex h-8 w-8 items-center justify-center rounded-full bg-violet-500 text-sm font-semibold text-white'
-                    : i < step
-                      ? 'flex h-8 w-8 items-center justify-center rounded-full bg-violet-500/30 text-sm font-semibold text-violet-200'
-                      : 'flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-sm text-white/60'
-                }
-              >
-                {i < step ? '✓' : i + 1}
-              </span>
-              <span
-                className={
-                  i === step
-                    ? 'hidden text-sm font-medium text-white sm:inline'
-                    : 'hidden text-sm text-white/60 sm:inline'
-                }
-              >
-                {s.label}
-              </span>
-            </button>
-            {i < LAST_STEP && (
-              <span
-                className={
-                  i < step
-                    ? 'mx-3 h-px flex-1 bg-violet-400'
-                    : 'mx-3 h-px flex-1 bg-white/15'
-                }
-              />
+            <Pencil size={14} /> Edit problem
+          </Link>
+        )}
+      </div>
+
+      <div className="card p-5 space-y-4">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="inline-block w-3 h-3 rounded-full"
+              style={{ background: theme.color }}
+            />
+            <span className="font-semibold">{data.mainCategoryName}</span>
+            {data.categoryName && data.categoryName !== data.mainCategoryName && (
+              <span className="opacity-70">· {data.categoryName}</span>
             )}
-          </li>
-        ))}
-      </ol>
+          </span>
+          <span className={revealed ? 'text-amber-300' : 'opacity-70'}>
+            {revealed ? '0 XP (answer revealed)' : `${xpReward} XP`}
+          </span>
+          <span className="opacity-70">
+            Attempt {showSolution ? attemptsUsed : attemptsUsed + 1}
+          </span>
+        </div>
 
-      {step === 0 && (
-        <section className={cardClass}>
-          <StepHeader
-            title="Basics"
-            subtitle="Where does this problem live, and how much is it worth?"
+        <p className="text-lg">
+          <MathText text={data.questionText} />
+        </p>
+
+        {data.questionImagePath && (
+          <img
+            src={fileUrl(data.questionImagePath)}
+            alt="Problem illustration"
+            className="max-h-80 rounded-lg"
           />
+        )}
 
-          <div>
-            <label className={labelClass}>Quest</label>
-            <select
-              className={inputClass}
-              value={questId}
-              disabled={lockQuest}
-              onChange={(e) => handleQuestChange(e.target.value)}
-            >
-              <option value="" className="text-black">
-                Choose a quest…
-              </option>
-              {quests.map((q) => (
-                <option key={q.id} value={q.id} className="text-black">
-                  {q.title}
-                </option>
-              ))}
-            </select>
-            {fieldError('questId')}
-          </div>
-
-          <div>
-            <label className={labelClass}>Category</label>
-            <select
-              className={inputClass}
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-            >
-              <option value="" className="text-black">
-                Choose a category…
-              </option>
-              {categoryTree.map((main) => (
-                <optgroup key={main.id} label={main.name} className="text-black">
-                  {subsOf(main).map((sub) => (
-                    <option key={sub.id} value={sub.id} className="text-black">
-                      {sub.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-            {fieldError('categoryId')}
-          </div>
-
-          <div>
-            <label className={labelClass}>Difficulty</label>
-            <select
-              className={inputClass}
-              value={difficultyLevel}
-              onChange={(e) => setDifficultyLevel(e.target.value)}
-            >
-              {LEVELS.map(([value, label]) => (
-                <option key={value} value={value} className="text-black">
-                  {label}
-                </option>
-              ))}
-            </select>
-            <p className={helpClass}>Filled in from the quest when you pick one.</p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>XP reward</label>
-              <input
-                className={inputClass}
-                type="number"
-                min="0"
-                step="1"
-                value={xpReward}
-                onChange={(e) => setXpReward(e.target.value)}
-              />
-              {fieldError('xpReward')}
-            </div>
-            <div>
-              <label className={labelClass}>Order in quest</label>
-              <input
-                className={inputClass}
-                type="number"
-                min="1"
-                step="1"
-                value={orderIndex}
-                onChange={(e) => setOrderIndex(e.target.value)}
-              />
-              {fieldError('orderIndex')}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {step === 1 && (
-        <section className={cardClass}>
-          <StepHeader
-            title="Question"
-            subtitle="Write the question. Use ∑ Formula wherever you need math."
+        {data.embedUrl && (
+          <iframe
+            src={data.embedUrl}
+            title="Interactive graph"
+            width="100%"
+            height="450"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin allow-popups"
+            style={{ border: 0 }}
+            className="rounded-lg bg-white"
           />
-          <RichMathInput
-            value={questionText}
-            onChange={setQuestionText}
-            minRows={6}
-            placeholder="Type the question here…"
-          />
-          {fieldError('questionText')}
+        )}
 
-          <div className="border-t border-white/10 pt-5">
-            <ImageUploadField
-              label="Question image (optional)"
-              value={questionRemoved ? null : questionImageUrl}
-              pendingFile={questionFile}
-              busy={submitting}
-              onPick={pickQuestionImage}
-              onRemove={removeQuestionImage}
-            />
+        {isMultiple ? (
+          <div className="space-y-2">
+            {options.map((opt) => {
+              const selected = !showSolution && selectedOptionId === opt.id
+              const isCorrectOption =
+                showSolution && correctOptionId !== null && opt.id === correctOptionId
+              let borderColor = 'rgba(148,163,184,0.3)'
+              let background = 'transparent'
+              if (isCorrectOption) {
+                borderColor = 'rgba(74,222,128,0.7)'
+                background = 'rgba(74,222,128,0.12)'
+              } else if (selected) {
+                borderColor = theme.color
+                background = `${theme.color}22`
+              }
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  disabled={showSolution}
+                  onClick={() => setSelectedOptionId(opt.id)}
+                  className="w-full text-left rounded-lg px-4 py-3 border transition disabled:opacity-80"
+                  style={{ borderColor, background }}
+                >
+                  <MathText text={opt.optionText} />
+                  {opt.optionImagePath && (
+                    <img
+                      src={fileUrl(opt.optionImagePath)}
+                      alt=""
+                      className="mt-2 max-h-32 rounded"
+                    />
+                  )}
+                </button>
+              )
+            })}
           </div>
-
-          <div className="border-t border-white/10 pt-5">
-            <label className={labelClass}>Desmos / GeoGebra link (optional)</label>
-            <input
-              className={inputClass}
-              value={embedUrl}
-              placeholder="Paste a Desmos or GeoGebra link"
-              onChange={(e) => setEmbedUrl(e.target.value)}
-            />
-            <p className={helpClass}>
-              Students will see an interactive graph under the question. Leave empty for none.
-            </p>
-          </div>
-        </section>
-      )}
-
-      {step === 2 && (
-        <section className={cardClass}>
-          <StepHeader
-            title="Answer"
-            subtitle="Choose how students answer, then set the correct answer."
+        ) : (
+          <input
+            className="input-field w-full"
+            placeholder="Your answer"
+            value={openAnswer}
+            disabled={showSolution}
+            onChange={(e) => setOpenAnswer(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSubmit()
+            }}
           />
+        )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {TYPES.map(([value, label, help]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setProblemType(value)}
-                className={
-                  problemType === value
-                    ? 'rounded-xl border-2 border-violet-400 bg-violet-500/10 p-4 text-left'
-                    : 'rounded-xl border-2 border-white/10 bg-white/5 p-4 text-left hover:border-white/30'
-                }
-              >
-                <div className="font-semibold text-white">{label}</div>
-                <div className="mt-1 text-sm text-white/60">{help}</div>
-              </button>
-            ))}
-          </div>
-
-          {problemType === 'OPEN_ANSWER' ? (
-            <div>
-              <label className={labelClass}>Correct answer</label>
-              <input
-                className={inputClass}
-                value={correctAnswer}
-                placeholder="For example: 3"
-                onChange={(e) => setCorrectAnswer(e.target.value)}
-              />
-              {fieldError('correctAnswer')}
-            </div>
-          ) : (
-            <div>
-              <label className={labelClass}>Options</label>
-              <p className="mb-3 text-xs text-white/50">
-                Click the letter circle of the correct option to mark it.
-              </p>
-              <div className="space-y-3">
-                {options.map((opt, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <button
-                      type="button"
-                      title="Mark as correct"
-                      onClick={() => setCorrect(index)}
-                      className={
-                        opt.isCorrect
-                          ? 'mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-500 text-sm font-bold text-white'
-                          : 'mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 text-sm text-white/70 hover:border-green-400'
-                      }
-                    >
-                      {opt.isCorrect ? '✓' : String.fromCharCode(65 + index)}
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <RichMathInput
-                        compact
-                        minRows={1}
-                        value={opt.optionText}
-                        placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                        onChange={(text) => setOptionText(index, text)}
-                      />
-                    </div>
-                    {options.length > 2 && (
-                      <button
-                        type="button"
-                        title="Remove option"
-                        onClick={() => removeOption(index)}
-                        className="px-2 pt-2 text-white/50 hover:text-red-400"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={addOption}
-                className="mt-3 text-sm text-violet-300 hover:text-violet-200"
-              >
-                + Add option
-              </button>
-              {fieldError('options')}
-            </div>
-          )}
-        </section>
-      )}
-
-      {step === 3 && (
-        <section className={cardClass}>
-          <StepHeader
-            title="Hints and explanation"
-            subtitle="Both are optional. Students reveal hints one by one, in this order."
-          />
-
-          <div className="space-y-4">
+        {showHintBlock && (
+          <div className="space-y-2">
             {hints.map((hint, index) => (
               <div
                 key={index}
-                className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-4"
+                className="rounded-lg px-4 py-3 border text-sm space-y-1"
+                style={{
+                  borderColor: 'rgba(250,204,21,0.35)',
+                  background: 'rgba(250,204,21,0.08)',
+                }}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-amber-200">Hint {index + 1}</span>
-                  <span className="ml-auto flex items-center gap-1">
-                    <button
-                      type="button"
-                      title="Move up"
-                      disabled={index === 0}
-                      onClick={() => moveHint(index, -1)}
-                      className="px-2 text-white/50 hover:text-white disabled:opacity-30"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      title="Move down"
-                      disabled={index === hints.length - 1}
-                      onClick={() => moveHint(index, 1)}
-                      className="px-2 text-white/50 hover:text-white disabled:opacity-30"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      title="Remove hint"
-                      onClick={() => removeHint(index)}
-                      className="px-2 text-white/50 hover:text-red-400"
-                    >
-                      ✕
-                    </button>
-                  </span>
+                <div className="flex items-center gap-2 text-yellow-300 font-semibold">
+                  <Lightbulb size={14} /> Hint {index + 1}
                 </div>
-                <RichMathInput
-                  minRows={2}
-                  value={hint}
-                  placeholder={`Hint ${index + 1}`}
-                  onChange={(text) => setHintText(index, text)}
-                />
+                <div>
+                  <MathText text={hintText(hint)} />
+                </div>
               </div>
             ))}
-          </div>
 
-          {hints.length < MAX_HINTS && (
-            <button
-              type="button"
-              onClick={addHint}
-              className="w-full rounded-xl border border-dashed border-white/20 px-4 py-3 text-sm text-violet-300 hover:border-violet-400 hover:text-violet-200"
-            >
-              + Add hint ({hints.length} / {MAX_HINTS})
-            </button>
-          )}
-
-          <div className="space-y-2 border-t border-white/10 pt-5">
-            <label className={labelClass}>Explanation (shown after the problem is solved)</label>
-            <RichMathInput
-              value={explanation}
-              onChange={setExplanation}
-              minRows={4}
-              placeholder="Explain the solution step by step…"
-            />
-          </div>
-
-          <div className="border-t border-white/10 pt-5">
-            <ImageUploadField
-              label="Explanation image (optional)"
-              value={explanationRemoved ? null : explanationImageUrl}
-              pendingFile={explanationFile}
-              busy={submitting}
-              onPick={pickExplanationImage}
-              onRemove={removeExplanationImage}
-            />
-          </div>
-        </section>
-      )}
-
-      {step === LAST_STEP && (
-        <div className="space-y-5">
-          <section className={cardClass}>
-            <StepHeader
-              title="Review"
-              subtitle="Check the settings and how students will see this problem."
-            />
-
-            {Object.keys(pending).length > 0 && (
-              <div className="space-y-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
-                <div className="font-medium">Fix these before saving:</div>
-                {Object.keys(pending).map((key) => (
-                  <div key={key} className="flex items-center gap-2">
-                    <span>{pending[key]}</span>
-                    <button
-                      type="button"
-                      onClick={() => goTo(ERROR_STEP[key])}
-                      className="ml-auto underline"
-                    >
-                      Go to {STEPS[ERROR_STEP[key]].label}
-                    </button>
-                  </div>
-                ))}
-              </div>
+            {!showSolution && hasMoreHints && (
+              <button
+                type="button"
+                className="btn-secondary inline-flex items-center gap-2"
+                disabled={hintMutation.isPending}
+                onClick={() => hintMutation.mutate()}
+              >
+                <Lightbulb size={16} />
+                {hintMutation.isPending
+                  ? 'Loading…'
+                  : `Show hint (${hints.length + 1} / ${hintCount})`}
+              </button>
             )}
+          </div>
+        )}
 
-            <dl className="divide-y divide-white/10 rounded-lg border border-white/10 text-sm">
-              {summary.map(([label, value, stepIndex]) => (
-                <div key={label} className="flex items-center gap-3 px-4 py-2.5">
-                  <dt className="w-36 text-white/50">{label}</dt>
-                  <dd className="min-w-0 flex-1 break-all text-white">{value}</dd>
-                  <button
-                    type="button"
-                    onClick={() => goTo(stepIndex)}
-                    className="text-violet-300 hover:text-violet-200"
-                  >
-                    Edit
-                  </button>
-                </div>
-              ))}
-            </dl>
-          </section>
+        {!showSolution && result && result.correct === false && (
+          <p className="text-sm text-red-300">
+            Wrong answer. Wrong tries this session: {wrongCount}. There is no limit, so try again.
+          </p>
+        )}
 
-          <ProblemPreview
-            questionText={questionText}
-            problemType={problemType}
-            options={options}
-            correctAnswer={correctAnswer}
-            hints={hints}
-            explanation={explanation}
-            xpReward={xpReward}
-            mainCategoryName={mainCategoryName}
-            categoryName={categoryName}
-            levelLabel={levelLabel}
-          />
-        </div>
-      )}
+        {!showSolution && (
+          <div className="flex flex-wrap items-center gap-3">
+            <button className="btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
+              {submitMutation.isPending ? 'Checking…' : 'Submit answer'}
+            </button>
 
-      {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+            {!confirmGiveUp && (
+              <button
+                type="button"
+                className="btn-secondary inline-flex items-center gap-2"
+                onClick={() => setConfirmGiveUp(true)}
+              >
+                <Eye size={16} /> Give up
+              </button>
+            )}
+          </div>
+        )}
 
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          className={ghostBtn}
-          disabled={step === 0}
-          onClick={() => goTo(step - 1)}
-        >
-          ← Back
-        </button>
-        {step < LAST_STEP ? (
-          <button type="button" className={primaryBtn} onClick={next}>
-            Next →
-          </button>
-        ) : (
-          <button type="button" className={primaryBtn} disabled={submitting} onClick={save}>
-            {submitting ? 'Saving…' : submitLabel}
-          </button>
+        {!showSolution && confirmGiveUp && (
+          <div
+            className="rounded-lg px-4 py-3 border text-sm space-y-3"
+            style={{
+              borderColor: 'rgba(248,113,113,0.4)',
+              background: 'rgba(248,113,113,0.08)',
+            }}
+          >
+            <p>
+              Show the solution?{' '}
+              {estimatedPenalty > 0
+                ? `You will lose about ${estimatedPenalty} XP`
+                : 'This problem has no XP to lose'}{' '}
+              and earn no XP for this problem. This cannot be undone.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={giveUpMutation.isPending}
+                onClick={() => giveUpMutation.mutate()}
+              >
+                {giveUpMutation.isPending ? 'Loading…' : 'Yes, show the solution'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={giveUpMutation.isPending}
+                onClick={() => setConfirmGiveUp(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
-    </form>
-  );
+
+      {showSolution && (
+        <div className="card p-5 space-y-3">
+          {revealed ? (
+            <div className="flex items-center gap-2 text-amber-300 font-semibold">
+              <Eye size={20} /> Answer revealed
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-green-300 font-semibold">
+              <CheckCircle2 size={20} /> Solved
+            </div>
+          )}
+
+          {revealed && (
+            <p className="text-sm opacity-70">
+              No XP for this problem.
+              {penalty > 0 ? ` -${penalty} XP was deducted.` : ''}
+            </p>
+          )}
+
+          {questDone && (
+            <p className="text-sm text-green-300 font-semibold">Quest completed! 🎉</p>
+          )}
+
+          {correctAnswer && (
+            <p className="text-sm">
+              <span className="opacity-70">Answer:</span> <MathText text={correctAnswer} />
+            </p>
+          )}
+          {explanation && (
+            <p>
+              <MathText text={explanation} />
+            </p>
+          )}
+          {explanationImage && (
+            <img
+              src={fileUrl(explanationImage)}
+              alt="Explanation"
+              className="max-h-80 rounded-lg"
+            />
+          )}
+          <button className="btn-primary" onClick={() => navigate(mapLink)}>
+            {revealed ? 'Continue' : 'Back to map'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function ProblemPage() {
+  const { id } = useParams()
+  return <ProblemView key={id} id={id} />
 }

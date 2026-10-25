@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
-import RichMathInput from '../../components/RichMathInput';
-import ProblemPreview from '../../components/problem/ProblemPreview';
+import RichMathInput from '../RichMathInput';
+import ProblemPreview from './ProblemPreview';
+import ImageUploadField from './ImageUploadField';
 
 const LEVELS = [
   ['LEVEL_1_BEGINNER', 'Level 1 · Beginner'],
@@ -58,6 +59,13 @@ const emptyOptions = () => [
   { optionText: '', isCorrect: false },
 ];
 
+function describeImage(savedUrl, file, removed) {
+  if (file) return 'New: ' + file.name;
+  if (removed) return 'Will be removed';
+  if (savedUrl) return 'Saved image';
+  return '—';
+}
+
 function StepHeader({ title, subtitle }) {
   return (
     <div>
@@ -101,6 +109,14 @@ export default function ProblemForm({
   );
   const [errors, setErrors] = useState({});
 
+  // Images: saved URLs come from the server, files are picked but not uploaded yet.
+  const questionImageUrl = initial?.questionImagePath ?? null;
+  const explanationImageUrl = initial?.explanationImagePath ?? null;
+  const [questionFile, setQuestionFile] = useState(null);
+  const [questionRemoved, setQuestionRemoved] = useState(false);
+  const [explanationFile, setExplanationFile] = useState(null);
+  const [explanationRemoved, setExplanationRemoved] = useState(false);
+
   const { data: categoryTree = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: () => api.get('/api/categories').then((res) => res.data.data),
@@ -129,6 +145,32 @@ export default function ProblemForm({
     if (q && !lockQuest) {
       setDifficultyLevel(q.difficultyLevel);
       setOrderIndex(String((q.totalProblems ?? 0) + 1));
+    }
+  };
+
+  const pickQuestionImage = (file) => {
+    setQuestionFile(file);
+    setQuestionRemoved(false);
+  };
+
+  const removeQuestionImage = () => {
+    if (questionFile) {
+      setQuestionFile(null);
+    } else {
+      setQuestionRemoved(true);
+    }
+  };
+
+  const pickExplanationImage = (file) => {
+    setExplanationFile(file);
+    setExplanationRemoved(false);
+  };
+
+  const removeExplanationImage = () => {
+    if (explanationFile) {
+      setExplanationFile(null);
+    } else {
+      setExplanationRemoved(true);
     }
   };
 
@@ -244,7 +286,12 @@ export default function ProblemForm({
         .filter((o) => o.optionText.trim())
         .map((o) => ({ optionText: o.optionText.trim(), isCorrect: !!o.isCorrect }));
     }
-    onSubmit(payload);
+
+    const images = {
+      question: { file: questionFile, removed: questionRemoved },
+      explanation: { file: explanationFile, removed: explanationRemoved },
+    };
+    onSubmit(payload, images);
   };
 
   const fieldError = (key) =>
@@ -259,7 +306,13 @@ export default function ProblemForm({
     ['XP reward', xpReward || '0', 0],
     ['Order in quest', orderIndex || '—', 0],
     ['Graph link', embedUrl.trim() || '—', 1],
+    ['Question image', describeImage(questionImageUrl, questionFile, questionRemoved), 1],
     ['Answer type', problemType === 'OPEN_ANSWER' ? 'Open answer' : 'Multiple choice', 2],
+    [
+      'Explanation image',
+      describeImage(explanationImageUrl, explanationFile, explanationRemoved),
+      3,
+    ],
   ];
 
   return (
@@ -420,6 +473,17 @@ export default function ProblemForm({
             placeholder="Type the question here…"
           />
           {fieldError('questionText')}
+
+          <div className="border-t border-white/10 pt-5">
+            <ImageUploadField
+              label="Question image (optional)"
+              value={questionRemoved ? null : questionImageUrl}
+              pendingFile={questionFile}
+              busy={submitting}
+              onPick={pickQuestionImage}
+              onRemove={removeQuestionImage}
+            />
+          </div>
 
           <div className="border-t border-white/10 pt-5">
             <label className={labelClass}>Desmos / GeoGebra link (optional)</label>
@@ -599,6 +663,17 @@ export default function ProblemForm({
               onChange={setExplanation}
               minRows={4}
               placeholder="Explain the solution step by step…"
+            />
+          </div>
+
+          <div className="border-t border-white/10 pt-5">
+            <ImageUploadField
+              label="Explanation image (optional)"
+              value={explanationRemoved ? null : explanationImageUrl}
+              pendingFile={explanationFile}
+              busy={submitting}
+              onPick={pickExplanationImage}
+              onRemove={removeExplanationImage}
             />
           </div>
         </section>
