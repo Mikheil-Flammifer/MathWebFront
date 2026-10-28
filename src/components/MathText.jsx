@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import katex from "katex";
 import "katex/dist/katex.min.css";
+import { renderMath } from "../utils/katexSafe";
 
 // Finds the closing "$" of an inline formula. Skips escaped characters
 // like \$ and gives up at a line break (inline math stays on one line).
@@ -72,16 +72,10 @@ export function tokenize(text) {
   return tokens;
 }
 
-// dangerouslySetInnerHTML is safe here only because the HTML is KaTeX output
-// (trust: false), never raw user text. Keep it that way.
+// dangerouslySetInnerHTML is safe here only because renderMath always returns
+// KaTeX output or an escaped fallback, never raw user text. Keep it that way.
 function Tex({ tex, display }) {
-  const html = useMemo(() => {
-    return katex.renderToString(tex, {
-      displayMode: display,
-      throwOnError: false,
-      trust: false,
-    });
-  }, [tex, display]);
+  const html = useMemo(() => renderMath(tex, display), [tex, display]);
 
   return <span dangerouslySetInnerHTML={{ __html: html }} />;
 }

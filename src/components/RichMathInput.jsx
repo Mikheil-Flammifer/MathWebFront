@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import katex from 'katex';
+import { renderMath } from '../utils/katexSafe';
 import { MathfieldElement } from 'mathlive';
 import 'katex/dist/katex.min.css';
 import { tokenize } from './MathText';
@@ -47,12 +47,9 @@ function injectStyles() {
 
 // KaTeX output is safe to set as HTML: trust is off and the input is only
 // a LaTeX string, never raw HTML.
+// renderMath always returns safe HTML: KaTeX output or an escaped fallback.
 function renderLatex(latex, display) {
-  return katex.renderToString(latex, {
-    displayMode: display,
-    throwOnError: false,
-    trust: false,
-  });
+  return renderMath(latex, display);
 }
 
 function createChip(latex, display) {
