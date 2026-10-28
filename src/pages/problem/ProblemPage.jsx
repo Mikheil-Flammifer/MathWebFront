@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -25,6 +25,25 @@ function hintText(hint) {
   return hint?.text ?? hint?.hintText ?? hint?.content ?? ''
 }
 
+function HintCard({ hint, number }) {
+  return (
+    <div
+      className="rounded-lg px-4 py-3 border text-sm space-y-1"
+      style={{
+        borderColor: 'rgba(250,204,21,0.35)',
+        background: 'rgba(250,204,21,0.08)',
+      }}
+    >
+      <div className="flex items-center gap-2 text-yellow-300 font-semibold">
+        <Lightbulb size={14} /> Hint {number}
+      </div>
+      <div>
+        <MathText text={hintText(hint)} />
+      </div>
+    </div>
+  )
+}
+
 function ProblemView({ id }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -37,6 +56,9 @@ function ProblemView({ id }) {
   const [confirmGiveUp, setConfirmGiveUp] = useState(false)
   const [penalty, setPenalty] = useState(0)
   const [questDone, setQuestDone] = useState(false)
+  const [showOldHints, setShowOldHints] = useState(false)
+  // How many hints were already open when this page was loaded.
+  const baseHintCountRef = useRef(null)
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['problem', String(id)],
@@ -170,6 +192,15 @@ function ProblemView({ id }) {
   const hasMoreHints = hints.length < hintCount
   const showHintBlock = hintCount > 0
 
+  // Remember how many hints were open on the first render with data.
+  // Staff get every hint in the response, so for them nothing is collapsed.
+  if (baseHintCountRef.current === null) {
+    baseHintCountRef.current = isStaff ? 0 : hints.length
+  }
+  const baseHintCount = Math.min(baseHintCountRef.current, hints.length)
+  const oldHints = hints.slice(0, baseHintCount)
+  const newHints = hints.slice(baseHintCount)
+
   const xpReward = data.xpReward ?? 0
   const estimatedPenalty = xpReward > 0 ? Math.max(1, Math.round(xpReward / 2)) : 0
 
@@ -302,22 +333,30 @@ function ProblemView({ id }) {
 
         {showHintBlock && (
           <div className="space-y-2">
-            {hints.map((hint, index) => (
-              <div
-                key={index}
-                className="rounded-lg px-4 py-3 border text-sm space-y-1"
-                style={{
-                  borderColor: 'rgba(250,204,21,0.35)',
-                  background: 'rgba(250,204,21,0.08)',
-                }}
+            {oldHints.length > 0 && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 text-sm text-yellow-300 hover:text-yellow-200"
+                onClick={() => setShowOldHints((v) => !v)}
               >
-                <div className="flex items-center gap-2 text-yellow-300 font-semibold">
-                  <Lightbulb size={14} /> Hint {index + 1}
-                </div>
-                <div>
-                  <MathText text={hintText(hint)} />
-                </div>
-              </div>
+                <Lightbulb size={14} />
+                {showOldHints
+                  ? `Hide opened hints (${oldHints.length})`
+                  : `Show opened hints (${oldHints.length})`}
+              </button>
+            )}
+
+            {showOldHints &&
+              oldHints.map((hint, index) => (
+                <HintCard key={index} hint={hint} number={index + 1} />
+              ))}
+
+            {newHints.map((hint, index) => (
+              <HintCard
+                key={baseHintCount + index}
+                hint={hint}
+                number={baseHintCount + index + 1}
+              />
             ))}
 
             {!showSolution && hasMoreHints && (
