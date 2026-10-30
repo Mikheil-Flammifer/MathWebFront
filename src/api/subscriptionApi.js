@@ -1,7 +1,9 @@
-import api from './axios';
+import api from './axios'
 
-export const subscriptionApi = {
-  getMy: () => api.get('/api/subscriptions/my'),
-  create: () => api.post('/api/subscriptions/create'),
-  cancel: () => api.post('/api/subscriptions/cancel'),
-};
+// data: { id, status, amountCents, currency, currentPeriodStart,
+//         currentPeriodEnd, cancelledAt, isActive }
+// No subscription: 200 with isActive false and the other fields null.
+export async function fetchMySubscription() {
+  const res = await api.get('/api/subscriptions/my')
+  return res.data.data
+}
