@@ -2,15 +2,13 @@ import { useParams } from 'react-router-dom'
 import ReactPlayer from 'react-player'
 import { Eye, AlertTriangle } from 'lucide-react'
 import useVideo from '../../hooks/useVideoPlayer'
-import useAuthStore from '../../store/authStore'
 import PaywallGate from '../../components/video/PaywallGate'
 import CommentSection from '../../components/video/CommentSection'
 import EmptyState from '../../components/common/EmptyState'
-import { getAssetUrl, getDifficultyInfo, getFullName, formatDate } from '../../utils/helpers'
+import { getDifficultyInfo, getFullName, formatDate } from '../../utils/helpers'
 
 export default function VideoPlayerPage() {
   const { id } = useParams()
-  const hasSub = useAuthStore((s) => s.user?.hasActiveSubscription)
   const { data: video, isLoading, isError } = useVideo(id)
 
   if (isLoading) {
@@ -27,8 +25,9 @@ export default function VideoPlayerPage() {
     return <EmptyState icon={AlertTriangle} title="Video not found" subtitle="It may have been removed or the link is incorrect." />
   }
 
-  const locked = video.isPremium && !hasSub
-  const diff = getDifficultyInfo(video.difficulty)
+  // The server decides access: no streamUrl means locked.
+  const locked = !video.streamUrl
+  const diff = getDifficultyInfo(video.difficultyLevel)
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -37,7 +36,7 @@ export default function VideoPlayerPage() {
       ) : (
         <div className="aspect-video rounded-xl overflow-hidden bg-black">
           <ReactPlayer
-            src={getAssetUrl(video.filePath)}
+            src={video.streamUrl}
             controls
             width="100%"
             height="100%"
@@ -49,7 +48,7 @@ export default function VideoPlayerPage() {
         <h1 className="text-2xl font-semibold font-display text-chalk-50 mb-2">{video.title}</h1>
         <div className="flex flex-wrap items-center gap-2.5 text-sm text-chalk-400 mb-3">
           <span className={`badge ${diff.badge}`}>{diff.label}</span>
-          {video.mathTopic && <span className="math-tag">{video.mathTopic}</span>}
+          {video.free === true && <span className="badge-plasma">Free</span>}
           <span className="flex items-center gap-1"><Eye size={14} /> {video.viewCount ?? 0} views</span>
           <span>·</span>
           <span>{formatDate(video.createdAt)}</span>
