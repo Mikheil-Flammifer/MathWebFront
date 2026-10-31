@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { CheckCircle2, Loader2, Clock, AlertCircle } from 'lucide-react'
 import { fetchPlans } from '../../api/plansApi'
 import { fetchMySubscription } from '../../api/subscriptionApi'
 import { getPaddle, onPaddleEvent } from '../../utils/paddle'
 import useAuthStore from '../../store/authStore'
-import './SubscriptionPage.css'
 
 const POLL_INTERVAL_MS = 2000
 const MAX_POLL_ATTEMPTS = 15 // about 30 seconds
 const AFTER_ACTIVE_REDIRECT = '/home'
 
 const formatPrice = (priceCents, currency) =>
-  new Intl.NumberFormat(undefined, {
+  new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
   }).format(priceCents / 100)
@@ -21,6 +21,23 @@ const formatDate = (value) => {
   if (!value) return ''
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString()
+}
+
+function Banner({ tone, icon: Icon, children }) {
+  const tones = {
+    success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
+    info: 'border-plasma-500/30 bg-plasma-500/10 text-plasma-200',
+    warn: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+  }
+  return (
+    <div
+      role="status"
+      className={`mx-auto mb-6 max-w-lg flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm text-left ${tones[tone]}`}
+    >
+      <Icon size={16} className="mt-0.5 shrink-0" />
+      <span>{children}</span>
+    </div>
+  )
 }
 
 export default function SubscriptionPage() {
@@ -41,6 +58,7 @@ export default function SubscriptionPage() {
     isLoading: plansLoading,
     isError: plansError,
     refetch: refetchPlans,
+    isFetching: plansFetching,
   } = useQuery({
     queryKey: ['plans'],
     queryFn: fetchPlans,
@@ -159,63 +177,78 @@ export default function SubscriptionPage() {
     : ''
 
   return (
-    <div className="pricing-page">
-      <h1 className="pricing-title">Get access to all videos</h1>
-      <p className="pricing-subtitle">
+    <div className="text-center">
+      <h1 className="page-title mb-2">Get access to all videos</h1>
+      <p className="text-chalk-400 mb-8">
         One-time payment. No subscription, no automatic renewal.
       </p>
 
       {mySubscription?.isActive === true && phase === 'idle' && (
-        <div className="pricing-banner">
+        <Banner tone="success" icon={CheckCircle2}>
           {activeUntil
             ? `Your access is active until ${activeUntil}. Buying again adds days after that date.`
             : 'Your access is active. Buying again adds days after the current end date.'}
-        </div>
+        </Banner>
       )}
 
       {phase === 'activating' && (
-        <div className="pricing-banner">Activating your access...</div>
+        <Banner tone="info" icon={Loader2}>Activating your access...</Banner>
       )}
 
       {phase === 'active' && (
-        <div className="pricing-banner">Your access is active. Taking you to the videos...</div>
+        <Banner tone="success" icon={CheckCircle2}>
+          Your access is active. Taking you to the videos...
+        </Banner>
       )}
 
       {phase === 'delayed' && (
-        <div className="pricing-banner">
+        <Banner tone="warn" icon={Clock}>
           Payment received, access will activate shortly. Refresh in a minute.
+        </Banner>
+      )}
+
+      {plansLoading && (
+        <div className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+          <div className="rounded-2xl skeleton h-56" />
+          <div className="rounded-2xl skeleton h-56" />
         </div>
       )}
 
-      {plansLoading && <p className="pricing-status">Loading plans...</p>}
-
       {plansError && (
-        <div className="pricing-status">
-          <p>Could not load prices, try again.</p>
-          <button type="button" className="pricing-btn" onClick={() => refetchPlans()}>
-            Try again
+        <div className="text-chalk-300">
+          <p className="mb-3">Could not load prices, try again.</p>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => refetchPlans()}
+            disabled={plansFetching}
+          >
+            {plansFetching ? <span className="spinner-sm" /> : 'Try again'}
           </button>
         </div>
       )}
 
       {plans && plans.length === 0 && (
-        <p className="pricing-status">No plans are available right now.</p>
+        <p className="text-chalk-400">No plans are available right now.</p>
       )}
 
       {plans && plans.length > 0 && (
-        <div className="pricing-grid">
+        <div className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
           {plans.map((plan) => (
-            <div key={plan.code} className="pricing-card">
-              <h2 className="pricing-card-name">{plan.name}</h2>
-              <div className="pricing-card-price">
-                {formatPrice(plan.priceCents, plan.currency)}
-              </div>
-              <div className="pricing-card-duration">
+            <div
+              key={plan.code}
+              className="rounded-2xl border border-space-500 bg-space-800/70 p-6 flex flex-col"
+            >
+              <h2 className="text-lg font-semibold text-chalk-50">{plan.name}</h2>
+              <p className="text-chalk-400 text-sm mt-1">
                 {plan.durationDays} days of access
-              </div>
+              </p>
+              <p className="text-4xl font-semibold text-chalk-50 mt-5">
+                {formatPrice(plan.priceCents, plan.currency)}
+              </p>
               <button
                 type="button"
-                className="pricing-btn pricing-btn-primary"
+                className="btn-primary mt-6 w-full justify-center"
                 disabled={openingCode !== null || busy}
                 onClick={() => handleBuy(plan)}
               >
@@ -230,7 +263,19 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      {errorMessage && <p className="pricing-error">{errorMessage}</p>}
+      {errorMessage && (
+        <div role="alert" className="alert-error mx-auto mt-6 max-w-lg text-left">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          {errorMessage}
+        </div>
+      )}
+
+      <p className="mt-8 text-xs text-chalk-400">
+        By buying you agree to the{' '}
+        <Link to="/terms" className="text-plasma-300 hover:text-plasma-200">Terms</Link>
+        {' '}and the{' '}
+        <Link to="/refund" className="text-plasma-300 hover:text-plasma-200">Refund Policy</Link>.
+      </p>
     </div>
   )
 }

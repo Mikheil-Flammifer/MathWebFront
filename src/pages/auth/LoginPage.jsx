@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { authApi } from '../../api/authApi'
@@ -10,8 +10,25 @@ import SubmitButton from '../../components/common/SubmitButton'
 import { getErrorMessage } from '../../utils/helpers'
 import { PENDING_EMAIL_KEY } from '../../utils/constants'
 
+const DEFAULT_AFTER_LOGIN = '/home'
+
+// Only allow internal paths like "/subscribe". Blocks "//evil.com",
+// "https://evil.com", "/\evil.com" and loops back to the auth pages.
+function getSafeRedirect(from) {
+  if (typeof from !== 'string') return DEFAULT_AFTER_LOGIN
+  if (!from.startsWith('/') || from.startsWith('//') || from.startsWith('/\\')) {
+    return DEFAULT_AFTER_LOGIN
+  }
+  const authPaths = ['/login', '/register', '/verify-otp', '/forgot-password', '/reset-password']
+  if (authPaths.some((p) => from === p || from.startsWith(p + '/') || from.startsWith(p + '?'))) {
+    return DEFAULT_AFTER_LOGIN
+  }
+  return from
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const setAuth = useAuthStore((s) => s.setAuth)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,7 +45,7 @@ export default function LoginPage() {
       const { user } = data.data
       setAuth(user)
       toast.success(`Welcome back, ${user.firstName}!`)
-      navigate('/home', { replace: true })
+      navigate(getSafeRedirect(location.state?.from), { replace: true })
     } catch (err) {
       const msg = getErrorMessage(err, 'Login failed')
       // Account exists but email not verified yet: send them to OTP
