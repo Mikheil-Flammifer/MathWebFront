@@ -21,9 +21,11 @@ export default function ForgotPasswordPage() {
     try {
       await authApi.forgotPassword(email.trim())
       sessionStorage.setItem(PENDING_EMAIL_KEY, email.trim())
-      toast.success('If that account exists, a code is on its way.')
+      // always the same message: never reveal whether the email exists
+      toast.success('If this email exists, a code has been sent.')
       navigate('/reset-password', { state: { email: email.trim() } })
     } catch (err) {
+      // rate limit comes back as 400 with a message: show it as-is
       toast.error(getErrorMessage(err))
     } finally {
       setLoading(false)

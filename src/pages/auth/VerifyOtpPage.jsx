@@ -10,6 +10,8 @@ import SubmitButton from '../../components/common/SubmitButton'
 import { getErrorMessage } from '../../utils/helpers'
 import { PENDING_EMAIL_KEY } from '../../utils/constants'
 
+const MAX_CODE_ATTEMPTS = 5
+
 export default function VerifyOtpPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -20,6 +22,10 @@ export default function VerifyOtpPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [cooldown, setCooldown] = useState(0)
+  const [failedCodes, setFailedCodes] = useState(0)
+
+  // the server kills the code after 5 wrong tries
+  const codeDead = failedCodes >= MAX_CODE_ATTEMPTS
 
   useEffect(() => {
     if (!email) navigate('/register', { replace: true })
@@ -32,7 +38,7 @@ export default function VerifyOtpPage() {
   }, [cooldown])
 
   const verify = async (code) => {
-    if (loading || code.length !== 6) return
+    if (loading || codeDead || code.length !== 6) return
     setLoading(true)
     setError('')
     try {
@@ -49,8 +55,13 @@ export default function VerifyOtpPage() {
         navigate('/login', { replace: true })
       }
     } catch (err) {
-      setError(getErrorMessage(err, 'Invalid or expired code'))
+      // the server gives one message for every failure: show it, don't guess why
+      const msg = getErrorMessage(err, 'Invalid or expired code')
+      setError(msg)
       setOtp('')
+      if (/invalid or expired/i.test(msg)) {
+        setFailedCodes((n) => n + 1)
+      }
     } finally {
       setLoading(false)
     }
@@ -65,10 +76,13 @@ export default function VerifyOtpPage() {
   const resend = async () => {
     try {
       await authApi.resendOtp(email)
-      toast.success('New code sent')
+      toast.success('If this email exists, a code has been sent.')
       setCooldown(60)
       setError('')
+      setFailedCodes(0)
+      setOtp('')
     } catch (err) {
+      // rate limit comes back as 400 with a message: show it as-is
       toast.error(getErrorMessage(err, 'Could not resend code'))
     }
   }
@@ -82,15 +96,25 @@ export default function VerifyOtpPage() {
       footer={<Link to="/login" className="inline-flex items-center gap-1.5 hover:text-chalk-100"><ArrowLeft size={14} /> Back to sign in</Link>}
     >
       <form onSubmit={(e) => { e.preventDefault(); verify(otp) }} className="space-y-6">
-        {error && <div className="alert-error"><AlertCircle size={16} className="mt-0.5 shrink-0" />{error}</div>}
-        <OtpInput value={otp} onChange={setOtp} disabled={loading} />
-        <SubmitButton loading={loading} disabled={otp.length !== 6}>Verify email</SubmitButton>
+        {error && <div role="alert" className="alert-error"><AlertCircle size={16} className="mt-0.5 shrink-0" />{error}</div>}
+
+        {codeDead && (
+          <div role="alert" className="alert-error">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            Too many wrong codes. This code no longer works. Request a new one below.
+          </div>
+        )}
+
+        <OtpInput value={otp} onChange={setOtp} disabled={loading || codeDead} />
+        <SubmitButton loading={loading} disabled={otp.length !== 6 || codeDead}>Verify email</SubmitButton>
         <p className="text-sm text-chalk-400 text-center">
-          Didn't get it?{' '}
+          {codeDead ? 'Need a new code?' : "Didn't get it?"}{' '}
           {cooldown > 0 ? (
             <span className="text-chalk-500">Resend in {cooldown}s</span>
           ) : (
-            <button type="button" onClick={resend} className="text-plasma-300 hover:text-plasma-200 font-medium">Resend code</button>
+            <button type="button" onClick={resend} className="text-plasma-300 hover:text-plasma-200 font-medium">
+              {codeDead ? 'Request a new code' : 'Resend code'}
+            </button>
           )}
         </p>
       </form>
