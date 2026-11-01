@@ -106,11 +106,6 @@ export default function QuestMapPage() {
             Pick a map, then solve problems to open the neighbouring locations.
           </p>
         </div>
-        {isStaff && (
-          <Link to="/admin/quests" className="btn-secondary inline-flex items-center gap-1">
-            <Settings2 size={15} /> Manage quests
-          </Link>
-        )}
       </div>
 
       {isLoading ? (

@@ -3,11 +3,14 @@ import { ShieldCheck, Sparkles } from 'lucide-react'
 import Logo from '../common/Logo'
 import useAuthStore from '../../store/authStore'
 import { ADMIN_DASHBOARD_URL, ROLES } from '../../utils/constants'
-import { NAV_ITEMS } from './navItems'
+import { NAV_ITEMS, STAFF_NAV_ITEMS, ADMIN_NAV_ITEMS } from './navItems'
+
+const linkClass = ({ isActive }) => (isActive ? 'nav-item-active' : 'nav-item')
 
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.role === ROLES.ADMIN
+  const isStaff = isAdmin || user?.role === ROLES.TEACHER
 
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col border-r border-space-500 bg-space-800/80 backdrop-blur-md">
@@ -18,24 +21,44 @@ export default function Sidebar() {
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         <p className="mono-label px-3 pt-3 pb-2">MENU</p>
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'nav-item-active' : 'nav-item')}>
+          <NavLink key={to} to={to} className={linkClass}>
             <Icon size={18} />
             {label}
           </NavLink>
         ))}
 
-        {isAdmin && ADMIN_DASHBOARD_URL && (
+        {isStaff && (
+          <>
+            <p className="mono-label px-3 pt-5 pb-2">MANAGE</p>
+            {STAFF_NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={to} className={linkClass}>
+                <Icon size={18} />
+                {label}
+              </NavLink>
+            ))}
+          </>
+        )}
+
+        {isAdmin && (
           <>
             <p className="mono-label px-3 pt-5 pb-2">ADMIN</p>
-            <a
-              href={ADMIN_DASHBOARD_URL}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="nav-item"
-            >
-              <ShieldCheck size={18} />
-              Admin panel
-            </a>
+            {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={to} className={linkClass}>
+                <Icon size={18} />
+                {label}
+              </NavLink>
+            ))}
+            {ADMIN_DASHBOARD_URL && (
+              <a
+                href={ADMIN_DASHBOARD_URL}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="nav-item"
+              >
+                <ShieldCheck size={18} />
+                Admin panel
+              </a>
+            )}
           </>
         )}
       </nav>

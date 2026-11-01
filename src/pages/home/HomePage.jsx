@@ -50,12 +50,6 @@ export default function HomePage() {
             {query ? 'Matching lessons across every topic.' : 'Pick a lesson and keep the streak going.'}
           </p>
         </div>
-
-        {isStaff && (
-          <Link to="/admin/videos" className="btn-secondary inline-flex items-center gap-1">
-            <VideoIcon size={15} /> Manage videos
-          </Link>
-        )}
       </div>
 
       {!query && <StreakChip />}

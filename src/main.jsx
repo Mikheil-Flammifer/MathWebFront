@@ -21,6 +21,7 @@ const queryClient = new QueryClient({
 })
 
 ReactDOM.createRoot(document.getElementById('root')).render(
+  <ErrorBoundary fullScreen>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <App />
@@ -43,4 +44,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         />
       </QueryClientProvider>
     </BrowserRouter>
+  </ErrorBoundary>
 )

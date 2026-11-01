@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import useAuthStore from './store/authStore'
+import AdminRoute from './components/layout/AdminRoute'
+import ErrorBoundary from './components/common/ErrorBoundary'
 
 // Auth pages
 import LoginPage from './pages/auth/LoginPage'
@@ -17,6 +19,8 @@ import AdminProblemEditPage from './pages/problem/AdminProblemEditPage'
 import AdminVideoCreatePage from './pages/video/AdminVideoCreatePage'
 import AdminVideoEditPage from './pages/video/AdminVideoEditPage'
 import AdminVideosPage from './pages/video/AdminVideosPage'
+import AdminCategoriesPage from './pages/category/AdminCategoriesPage'
+
 
 // Main pages
 import HomePage from './pages/home/HomePage'
@@ -35,6 +39,7 @@ import LandingPage from './pages/landing/LandingPage'
 import TermsPage from './pages/legal/TermsPage'
 import PrivacyPage from './pages/legal/PrivacyPage'
 import RefundPage from './pages/legal/RefundPage'
+import NotFoundPage from './pages/error/NotFoundPage'
 
 // Layout
 import MainLayout from './components/layout/MainLayout'
@@ -69,66 +74,76 @@ const RootRoute = () => {
 }
 
 export default function App() {
+  const location = useLocation()
+
   return (
-    <Routes>
-      {/* Public pages with header and footer, open to everyone */}
-      <Route element={<PublicLayout />}>
-        <Route path="/" element={<RootRoute />} />
-        <Route path="/subscribe" element={<SubscriptionPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/refund" element={<RefundPage />} />
-      </Route>
-
-      {/* Public routes */}
-      <Route path="/login" element={
-        <PublicRoute><LoginPage /></PublicRoute>
-      } />
-      <Route path="/register" element={
-        <PublicRoute><RegisterPage /></PublicRoute>
-      } />
-      <Route path="/verify-otp" element={<VerifyOtpPage />} />
-      <Route path="/forgot-password" element={
-        <PublicRoute><ForgotPasswordPage /></PublicRoute>
-      } />
-      <Route path="/reset-password" element={
-        <PublicRoute><ResetPasswordPage /></PublicRoute>
-      } />
-
-      {/* Protected routes with layout */}
-      <Route element={
-        <ProtectedRoute><MainLayout /></ProtectedRoute>
-      }>
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/videos/:id" element={<VideoPlayerPage />} />
-
-        <Route path="/quests" element={<QuestMapPage />} />
-        <Route path="/quests/:id" element={<QuestDetailPage />} />
-
-        <Route path="/problems/:id" element={<ProblemPage />} />
-        <Route path="/progress" element={<ProgressPage />} />
-        <Route path="/progress/mistakes" element={<MistakesPage />} />
-
-        <Route path="/profile" element={<ProfilePage />} />
-
-        {/* Staff only: ADMIN or TEACHER */}
-        <Route element={<StaffRoute />}>
-          <Route path="/admin/problems/new" element={<AdminProblemCreatePage />} />
-          <Route path="/admin/problems/:id/edit" element={<AdminProblemEditPage />} />
-
-          <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />
-          <Route path="/admin/quests" element={<AdminQuestsPage />} />
-          <Route path="/admin/quests/new" element={<AdminQuestCreatePage />} />
-          <Route path="/admin/quests/:id/settings" element={<AdminQuestSettingsPage />} />
-
-          <Route path="/admin/videos" element={<AdminVideosPage />} />
-          <Route path="/admin/videos/new" element={<AdminVideoCreatePage />} />
-          <Route path="/admin/videos/:id/edit" element={<AdminVideoEditPage />} />
+    // resetKey: navigating to another URL clears a caught error
+    <ErrorBoundary resetKey={location.pathname}>
+      <Routes>
+        {/* Public pages with header and footer, open to everyone */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<RootRoute />} />
+          <Route path="/subscribe" element={<SubscriptionPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/refund" element={<RefundPage />} />
         </Route>
-      </Route>
 
-      {/* Catch all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Public routes */}
+        <Route path="/login" element={
+          <PublicRoute><LoginPage /></PublicRoute>
+        } />
+        <Route path="/register" element={
+          <PublicRoute><RegisterPage /></PublicRoute>
+        } />
+        <Route path="/verify-otp" element={<VerifyOtpPage />} />
+        <Route path="/forgot-password" element={
+          <PublicRoute><ForgotPasswordPage /></PublicRoute>
+        } />
+        <Route path="/reset-password" element={
+          <PublicRoute><ResetPasswordPage /></PublicRoute>
+        } />
+
+        {/* Protected routes with layout */}
+        <Route element={
+          <ProtectedRoute><MainLayout /></ProtectedRoute>
+        }>
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/videos/:id" element={<VideoPlayerPage />} />
+
+          <Route path="/quests" element={<QuestMapPage />} />
+          <Route path="/quests/:id" element={<QuestDetailPage />} />
+
+          <Route path="/problems/:id" element={<ProblemPage />} />
+          <Route path="/progress" element={<ProgressPage />} />
+          <Route path="/progress/mistakes" element={<MistakesPage />} />
+
+          <Route path="/profile" element={<ProfilePage />} />
+
+          {/* Staff only: ADMIN or TEACHER */}
+          <Route element={<StaffRoute />}>
+            <Route path="/admin/problems/new" element={<AdminProblemCreatePage />} />
+            <Route path="/admin/problems/:id/edit" element={<AdminProblemEditPage />} />
+
+            <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />
+            <Route path="/admin/quests" element={<AdminQuestsPage />} />
+            <Route path="/admin/quests/new" element={<AdminQuestCreatePage />} />
+            <Route path="/admin/quests/:id/settings" element={<AdminQuestSettingsPage />} />
+
+            <Route path="/admin/videos" element={<AdminVideosPage />} />
+            <Route path="/admin/videos/new" element={<AdminVideoCreatePage />} />
+            <Route path="/admin/videos/:id/edit" element={<AdminVideoEditPage />} />
+          </Route>
+        </Route>
+
+        {/* Admin only */}
+        <Route element={<AdminRoute />}>
+          <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+        </Route>
+
+        {/* Catch all */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </ErrorBoundary>
   )
 }
