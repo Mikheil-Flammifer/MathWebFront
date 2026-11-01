@@ -254,7 +254,7 @@ export default function AdminCategoriesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="mono-label mb-2">ADMIN</p>
