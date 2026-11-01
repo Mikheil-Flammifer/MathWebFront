@@ -14,6 +14,9 @@ import AdminQuestCreatePage from './pages/quest/AdminQuestCreatePage'
 import AdminQuestSettingsPage from './pages/quest/AdminQuestSettingsPage'
 import AdminProblemCreatePage from './pages/problem/AdminProblemCreatePage'
 import AdminProblemEditPage from './pages/problem/AdminProblemEditPage'
+import AdminVideoCreatePage from './pages/video/AdminVideoCreatePage'
+import AdminVideoEditPage from './pages/video/AdminVideoEditPage'
+import AdminVideosPage from './pages/video/AdminVideosPage'
 
 // Main pages
 import HomePage from './pages/home/HomePage'
@@ -110,12 +113,17 @@ export default function App() {
 
         {/* Staff only: ADMIN or TEACHER */}
         <Route element={<StaffRoute />}>
-          <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />
           <Route path="/admin/problems/new" element={<AdminProblemCreatePage />} />
           <Route path="/admin/problems/:id/edit" element={<AdminProblemEditPage />} />
+
+          <Route path="/quests/:id/edit" element={<QuestMapEditorPage />} />
           <Route path="/admin/quests" element={<AdminQuestsPage />} />
           <Route path="/admin/quests/new" element={<AdminQuestCreatePage />} />
           <Route path="/admin/quests/:id/settings" element={<AdminQuestSettingsPage />} />
+
+          <Route path="/admin/videos" element={<AdminVideosPage />} />
+          <Route path="/admin/videos/new" element={<AdminVideoCreatePage />} />
+          <Route path="/admin/videos/:id/edit" element={<AdminVideoEditPage />} />
         </Route>
       </Route>
 

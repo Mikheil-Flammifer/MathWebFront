@@ -1,6 +1,8 @@
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import ReactPlayer from 'react-player'
-import { Eye, AlertTriangle } from 'lucide-react'
+import { Eye, AlertTriangle, Pencil } from 'lucide-react'
+import useAuthStore from '../../store/authStore'
+import { ROLES } from '../../utils/constants'
 import useVideo from '../../hooks/useVideoPlayer'
 import PaywallGate from '../../components/video/PaywallGate'
 import CommentSection from '../../components/video/CommentSection'
@@ -10,6 +12,7 @@ import { getDifficultyInfo, getFullName, formatDate } from '../../utils/helpers'
 export default function VideoPlayerPage() {
   const { id } = useParams()
   const { data: video, isLoading, isError } = useVideo(id)
+  const user = useAuthStore((s) => s.user)
 
   if (isLoading) {
     return (
@@ -28,6 +31,12 @@ export default function VideoPlayerPage() {
   // The server decides access: no streamUrl means locked.
   const locked = !video.streamUrl
   const diff = getDifficultyInfo(video.difficultyLevel)
+  // The backend allows an admin, or the teacher who uploaded the video.
+  const canEdit =
+    !!user &&
+    (user.role === ROLES.ADMIN ||
+      (user.role === ROLES.TEACHER && video.uploadedBy?.id === user.id))
+
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -45,7 +54,17 @@ export default function VideoPlayerPage() {
       )}
 
       <div className="mt-5 mb-6">
-        <h1 className="text-2xl font-semibold font-display text-chalk-50 mb-2">{video.title}</h1>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h1 className="text-2xl font-semibold font-display text-chalk-50">{video.title}</h1>
+          {canEdit && (
+            <Link
+              to={`/admin/videos/${video.id}/edit`}
+              className="btn-secondary inline-flex shrink-0 items-center gap-1"
+            >
+              <Pencil size={15} /> Edit video
+            </Link>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2.5 text-sm text-chalk-400 mb-3">
           <span className={`badge ${diff.badge}`}>{diff.label}</span>
           {video.free === true && <span className="badge-plasma">Free</span>}

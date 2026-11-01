@@ -1,5 +1,7 @@
-import { useSearchParams } from 'react-router-dom'
-import { SearchX, Compass, AlertTriangle } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { SearchX, Compass, AlertTriangle, Video as VideoIcon } from 'lucide-react'
+import useAuthStore from '../../store/authStore'
+import { ROLES } from '../../utils/constants'
 import useVideos from '../../hooks/useVideos'
 import VideoCard from '../../components/video/VideoCard'
 import EmptyState from '../../components/common/EmptyState'
@@ -21,6 +23,9 @@ function CardSkeleton() {
 
 export default function HomePage() {
   const [params, setParams] = useSearchParams()
+  const role = useAuthStore((s) => s.user?.role)
+  const isStaff = role === ROLES.ADMIN || role === ROLES.TEACHER
+
   const query = params.get('q') || ''
   const categoryId = params.get('categoryId') ? Number(params.get('categoryId')) : null
   const sort = params.get('sort') || 'newest'
@@ -38,11 +43,19 @@ export default function HomePage() {
 
   return (
     <div>
-      <div className="mb-5">
-        <h1 className="page-title">{query ? `Results for "${query}"` : 'Videos'}</h1>
-        <p className="text-chalk-400 mt-1">
-          {query ? 'Matching lessons across every topic.' : 'Pick a lesson and keep the streak going.'}
-        </p>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="page-title">{query ? `Results for "${query}"` : 'Videos'}</h1>
+          <p className="text-chalk-400 mt-1">
+            {query ? 'Matching lessons across every topic.' : 'Pick a lesson and keep the streak going.'}
+          </p>
+        </div>
+
+        {isStaff && (
+          <Link to="/admin/videos" className="btn-secondary inline-flex items-center gap-1">
+            <VideoIcon size={15} /> Manage videos
+          </Link>
+        )}
       </div>
 
       {!query && <StreakChip />}
