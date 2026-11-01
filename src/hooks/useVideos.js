@@ -15,6 +15,6 @@ export default function useVideos({ query, categoryId, sort } = {}) {
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) =>
-      lastPage.number + 1 < lastPage.totalPages ? lastPage.number + 1 : undefined,
+      lastPage.page + 1 < lastPage.totalPages ? lastPage.page + 1 : undefined,
   })
 }
