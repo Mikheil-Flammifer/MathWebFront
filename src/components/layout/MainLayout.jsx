@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
@@ -8,22 +8,35 @@ import useCurrentUser from '../../hooks/useCurrentUser'
 export default function MainLayout() {
   const me = useCurrentUser()
   const meStatus = me.error?.response?.status
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   // 401 is handled by the hook (logout). Everything else keeps the user here.
   const showMeError = me.isError && meStatus !== 401
 
   const { pathname } = useLocation()
   useEffect(() => {
     window.scrollTo(0, 0)
-    // explicit: no cleanup needed, and never let this effect's
-    // return value be anything but undefined
+    setMobileMenuOpen(false)
   }, [pathname])
 
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileMenuOpen])
+
   return (
-    <div className="min-h-screen">
-      <Sidebar />
+    <div className="min-h-screen full-viewport-height">
+      <Sidebar mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
       <div className="lg:pl-64 flex flex-col min-h-screen">
-        <Topbar />
-        <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 animate-fade-in">
+        <Topbar onMobileMenuClick={() => setMobileMenuOpen(!mobileMenuOpen)} />
+        <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8 animate-fade-in">
           {showMeError && (
             <div
               role="alert"
@@ -34,7 +47,7 @@ export default function MainLayout() {
                 type="button"
                 onClick={() => me.refetch()}
                 disabled={me.isFetching}
-                className="rounded-lg border border-red-400/40 px-3 py-1 font-medium hover:bg-red-500/20 disabled:opacity-50"
+                className="rounded-lg border border-red-400/40 px-3 py-1 font-medium hover:bg-red-500/20 disabled:opacity-50 touch-target no-zoom"
               >
                 {me.isFetching ? 'Retrying…' : 'Retry'}
               </button>

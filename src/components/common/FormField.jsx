@@ -10,11 +10,11 @@ export default function FormField({ label, icon: Icon, error, hint, type = 'text
       {label && <label htmlFor={props.id} className="input-label">{label}</label>}
       <div className="relative">
         {Icon && (
-          <Icon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-chalk-500 pointer-events-none" />
+          <Icon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chalk-500 pointer-events-none mobile-icon" />
         )}
         <input
           type={isPassword && show ? 'text' : type}
-          className={`input-field ${Icon ? 'pl-10' : ''} ${isPassword ? 'pr-11' : ''} ${error ? 'border-red-500/60' : ''}`}
+          className={`input-field ${Icon ? 'pl-12' : ''} ${isPassword ? 'pr-12' : ''} ${error ? 'border-red-500/60' : ''} touch-target`}
           {...props}
         />
         {isPassword && (
@@ -23,9 +23,9 @@ export default function FormField({ label, icon: Icon, error, hint, type = 'text
             tabIndex={-1}
             onClick={() => setShow((s) => !s)}
             aria-label={show ? 'Hide password' : 'Show password'}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 btn-icon w-8 h-8"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 btn-icon w-9 h-9 touch-target no-zoom"
           >
-            {show ? <EyeOff size={16} /> : <Eye size={16} />}
+            {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         )}
       </div>

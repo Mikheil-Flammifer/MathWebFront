@@ -1,6 +1,11 @@
-export default function SubmitButton({ loading, children, ...props }) {
+export default function SubmitButton({ loading, children, className = '', ...props }) {
   return (
-    <button type="submit" disabled={loading} className="btn-primary w-full py-3" {...props}>
+    <button
+      type="submit"
+      disabled={loading}
+      className={`btn-primary w-full py-3 mobile-padding touch-target no-zoom ${className}`}
+      {...props}
+    >
       {loading ? <span className="spinner-sm border-white/30 border-t-white" /> : children}
     </button>
   )
