@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { questApi } from '../api/questApi'
 
-export default function useQuests() {
+// params: { page, size, level, keyword }
+export default function useQuests(params = {}) {
   return useQuery({
-    queryKey: ['quests'],
-    queryFn: async () => (await questApi.getAll()).data.data,
+    queryKey: ['quests', params],
+    queryFn: () => questApi.getAll(params),
+    placeholderData: keepPreviousData,
   })
 }

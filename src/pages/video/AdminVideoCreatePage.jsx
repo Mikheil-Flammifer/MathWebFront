@@ -20,7 +20,7 @@ export default function AdminVideoCreatePage() {
 
   const { data: quests = [] } = useQuery({
     queryKey: ['quests-admin'],
-    queryFn: () => questApi.getAdminAll(),
+    queryFn: () => questApi.getAdminList(),
   })
 
   const uploadMutation = useMutation({

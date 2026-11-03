@@ -20,7 +20,7 @@ export default function QuestSettingsPage() {
 
   const { data: quests, isLoading, isError } = useQuery({
     queryKey: ['admin-quests'],
-    queryFn: () => questApi.getAdminAll(),
+    queryFn: () => questApi.getAdminList(),
   });
 
   const quest = useMemo(

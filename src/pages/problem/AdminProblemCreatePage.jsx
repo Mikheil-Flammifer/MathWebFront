@@ -14,7 +14,7 @@ export default function ProblemCreatePage() {
 
   const { data: quests, isLoading } = useQuery({
     queryKey: ['admin-quests'],
-    queryFn: () => questApi.getAdminAll(),
+    queryFn: () => questApi.getAdminList(),
   });
 
   const mutation = useMutation({

@@ -1,15 +1,16 @@
-import { useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
- Settings2, AlertTriangle, Map as MapIcon, Lock, Star, Flame, CheckCircle2, MapPin, PlayCircle,
+  AlertTriangle, Map as MapIcon, Lock, Star, Flame, CheckCircle2, MapPin, PlayCircle,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import useQuests from '../../hooks/useQuests'
 import EmptyState from '../../components/common/EmptyState'
-import useAuthStore from '../../store/authStore'
-import { DIFFICULTY_LEVELS, QUEST_STATUS, ROLES } from '../../utils/constants'
+import { DIFFICULTY_LEVELS, QUEST_STATUS } from '../../utils/constants'
 
 const LEVEL_KEYS = Object.keys(DIFFICULTY_LEVELS)
+const PAGE_SIZE = 12
 
 // Icons can't live in constants.js (they're components), so they stay here
 const STATUS_ICON = {
@@ -74,9 +75,15 @@ function QuestCard({ quest, onOpen }) {
 
 export default function QuestMapPage() {
   const navigate = useNavigate()
-  const { data: quests, isLoading, isError } = useQuests()
-  const role = useAuthStore((s) => s.user?.role)
-  const isStaff = role === ROLES.ADMIN || role === ROLES.TEACHER
+  const [page, setPage] = useState(0)
+  const [level, setLevel] = useState('') // '' = all levels
+
+  const { data, isLoading, isError } = useQuests({
+    page,
+    size: PAGE_SIZE,
+    ...(level ? { level } : {}),
+  })
+  const quests = data?.items
 
   const groups = useMemo(() => {
     const list = (quests || []).filter((q) => (q.totalProblems ?? 0) > 0)
@@ -88,6 +95,11 @@ export default function QuestMapPage() {
       }))
       .filter((g) => g.quests.length > 0)
   }, [quests])
+
+  const changeLevel = (value) => {
+    setLevel(value)
+    setPage(0)
+  }
 
   const openQuest = (quest) => {
     if (quest.userStatus === 'LOCKED') {
@@ -106,6 +118,26 @@ export default function QuestMapPage() {
             Pick a map, then solve problems to open the neighbouring locations.
           </p>
         </div>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => changeLevel('')}
+          className={level === '' ? 'btn-primary' : 'btn-secondary'}
+        >
+          All levels
+        </button>
+        {LEVEL_KEYS.map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => changeLevel(key)}
+            className={level === key ? 'btn-primary' : 'btn-secondary'}
+          >
+            Level {DIFFICULTY_LEVELS[key].level}
+          </button>
+        ))}
       </div>
 
       {isLoading ? (
@@ -137,6 +169,28 @@ export default function QuestMapPage() {
               </div>
             </section>
           ))}
+
+          {data && data.totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                className="btn-secondary inline-flex items-center gap-1"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                <ChevronLeft size={15} /> Prev
+              </button>
+              <span className="text-sm opacity-80">
+                Page {data.page + 1} of {data.totalPages}
+              </span>
+              <button
+                className="btn-secondary inline-flex items-center gap-1"
+                disabled={data.last}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -41,7 +41,7 @@ export default function QuestForm({
 
   const { data: allQuests = [] } = useQuery({
     queryKey: ['admin-quests-for-prereqs'],
-    queryFn: () => questApi.getAdminAll(),
+    queryFn: () => questApi.getAdminList(),
   });
 
   const candidates = allQuests.filter((q) => q.id !== excludeId);

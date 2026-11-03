@@ -26,7 +26,7 @@ export default function AdminVideoEditPage() {
 
   const { data: quests = [] } = useQuery({
     queryKey: ['quests-admin'],
-    queryFn: () => questApi.getAdminAll(),
+    queryFn: () => questApi.getAdminList(),
   })
 
   const saveMutation = useMutation({
