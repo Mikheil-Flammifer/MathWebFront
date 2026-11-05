@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2, Eye, Lightbulb, Pencil } from 'lucide-react'
 import api from '../../api/axios'
 import { problemApi } from '../../api/problemApi'
 import { getCategoryTheme } from '../../utils/constants'
+import { isAllowedEmbedUrl } from '../../utils/embedUrl'
 import useAuthStore from '../../store/authStore'
 import MathText from '../../components/MathText'
 
@@ -269,7 +270,7 @@ function ProblemView({ id }) {
           />
         )}
 
-        {data.embedUrl && (
+       {data.embedUrl && isAllowedEmbedUrl(data.embedUrl) && (
           <iframe
             src={data.embedUrl}
             title="Interactive graph"

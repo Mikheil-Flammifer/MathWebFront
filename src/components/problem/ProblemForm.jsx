@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import RichMathInput from '../RichMathInput';
 import ProblemPreview from './ProblemPreview';
 import ImageUploadField from './ImageUploadField';
+import { isAllowedEmbedUrl } from '../../utils/embedUrl';
 
 const LEVELS = [
   ['LEVEL_1_BEGINNER', 'Level 1 · Beginner'],
@@ -35,6 +36,7 @@ const ERROR_STEP = {
   xpReward: 0,
   orderIndex: 0,
   questionText: 1,
+  embedUrl: 1,
   correctAnswer: 2,
   options: 2,
 };
@@ -225,7 +227,9 @@ export default function ProblemForm({
     const oi = Number(orderIndex);
     if (!Number.isInteger(oi) || oi < 1) next.orderIndex = 'Order must be 1 or more';
     if (!questionText.trim()) next.questionText = 'Write the question first';
-
+    if (embedUrl.trim() && !isAllowedEmbedUrl(embedUrl)) {
+      next.embedUrl = 'Only https links from desmos.com or geogebra.org are allowed';
+    }
     if (problemType === 'OPEN_ANSWER') {
       if (!correctAnswer.trim()) next.correctAnswer = 'Correct answer is required';
     } else {
@@ -496,6 +500,7 @@ export default function ProblemForm({
             <p className={helpClass}>
               Students will see an interactive graph under the question. Leave empty for none.
             </p>
+            {fieldError('embedUrl')}
           </div>
         </section>
       )}
