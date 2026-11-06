@@ -33,6 +33,7 @@ import ProfilePage from './pages/profile/ProfilePage'
 import SubscriptionPage from './pages/subscription/SubscriptionPage'
 import ProgressPage from './pages/progress/ProgressPage'
 import MistakesPage from './pages/progress/MistakesPage'
+import NotificationsPage from './pages/notification/NotificationsPage'
 
 // Public pages
 import LandingPage from './pages/landing/LandingPage'
@@ -117,6 +118,8 @@ export default function App() {
           <Route path="/problems/:id" element={<ProblemPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/progress/mistakes" element={<MistakesPage />} />
+
+          <Route path="/notifications" element={<NotificationsPage />} />
 
           <Route path="/profile" element={<ProfilePage />} />
 

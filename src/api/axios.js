@@ -6,8 +6,8 @@ const CSRF_HEADER = { 'X-Requested-With': 'XMLHttpRequest' }
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // the browser sends the httpOnly cookies
-  headers: { 'Content-Type': 'application/json', ...CSRF_HEADER },
+  withCredentials: true,
+  headers: { 'X-Requested-With': 'XMLHttpRequest' },  // Only CSRF header
 })
 
 // One refresh at a time: requests that fail together share the same refresh call.

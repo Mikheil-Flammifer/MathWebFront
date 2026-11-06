@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { Search, X, Menu } from 'lucide-react'
 import Logo from '../common/Logo'
 import UserMenu from './UserMenu'
+import NotificationBell from '../notification/NotificationBell'
 
 export default function Topbar({ onMobileMenuClick }) {
   const navigate = useNavigate()
@@ -76,7 +77,11 @@ export default function Topbar({ onMobileMenuClick }) {
       </button>
 
       {/* User Menu */}
-      <div className="ml-auto"><UserMenu /></div>
+        {/* Notifications + User Menu */}
+        <div className="ml-auto flex items-center gap-1.5">
+          <NotificationBell />
+          <UserMenu />
+        </div>
 
       {/* Mobile Search Bar (slides down) */}
       {searchOpen && (
