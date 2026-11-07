@@ -20,6 +20,7 @@ import AdminVideoCreatePage from './pages/video/AdminVideoCreatePage'
 import AdminVideoEditPage from './pages/video/AdminVideoEditPage'
 import AdminVideosPage from './pages/video/AdminVideosPage'
 import AdminCategoriesPage from './pages/category/AdminCategoriesPage'
+import AdminUsersPage from './pages/user/AdminUsersPage'
 
 
 // Main pages
@@ -142,6 +143,7 @@ export default function App() {
         {/* Admin only */}
         <Route element={<AdminRoute />}>
           <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
         </Route>
 
         {/* Catch all */}

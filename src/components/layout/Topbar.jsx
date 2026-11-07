@@ -40,9 +40,6 @@ export default function Topbar({ onMobileMenuClick }) {
         <Menu size={24} className="text-chalk-200" />
       </button>
 
-      {/* Logo - Desktop only */}
-      <div className="hidden lg:block"><Logo to="/home" /></div>
-
       {/* Search - Desktop */}
       <form onSubmit={submit} className="hidden sm:block flex-1 max-w-xl" role="search">
         <div className="relative">

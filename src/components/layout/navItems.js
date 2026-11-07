@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Video,
   FolderTree,
+  Users,
 } from 'lucide-react'
 
 // everyone (also used by MobileNav)
@@ -25,6 +26,8 @@ export const STAFF_NAV_ITEMS = [
 ]
 
 // ADMIN only
+// ADMIN only
 export const ADMIN_NAV_ITEMS = [
   { to: '/admin/categories', label: 'Categories', icon: FolderTree },
+  { to: '/admin/users',      label: 'Users',      icon: Users },
 ]
