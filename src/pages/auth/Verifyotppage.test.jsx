@@ -19,7 +19,13 @@ vi.mock('../../store/authStore', () => ({
 vi.mock('../../components/layout/AuthLayout', async () => {
   const React = await import('react')
   return {
-    default: ({ children }) => React.createElement('div', null, children),
+    default: ({ children, subtitle }) =>
+      React.createElement(
+        'div',
+        null,
+        subtitle,
+        children
+      ),
   }
 })
 

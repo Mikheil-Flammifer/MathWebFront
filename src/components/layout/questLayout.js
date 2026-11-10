@@ -9,17 +9,25 @@ export function layoutQuestGraph(quests = []) {
   const byId = new Map(quests.map((q) => [q.id, q]))
   const levelCache = new Map()
 
-  const computeLevel = (id, seen = new Set()) => {
-    if (levelCache.has(id)) return levelCache.get(id)
-    if (seen.has(id)) return 0 // guards against bad/cyclic data
-    seen.add(id)
-    const prereqs = byId.get(id)?.prerequisiteQuestIds || []
-    const level = prereqs.length === 0
-      ? 0
-      : 1 + Math.max(...prereqs.map((pid) => (byId.has(pid) ? computeLevel(pid, seen) : 0)))
-    levelCache.set(id, level)
-    return level
-  }
+
+const computeLevel = (id, seen = new Set()) => {
+  if (levelCache.has(id)) return levelCache.get(id)
+  if (seen.has(id)) return 0
+
+  seen.add(id)
+
+  // Ignore prerequisites that don't exist in the supplied quest list.
+  const prereqs = (byId.get(id)?.prerequisiteQuestIds || [])
+    .filter((pid) => byId.has(pid))
+
+  const level = prereqs.length === 0
+    ? 0
+    : 1 + Math.max(...prereqs.map((pid) => computeLevel(pid, new Set(seen))))
+
+  levelCache.set(id, level)
+  return level
+}
+
   quests.forEach((q) => computeLevel(q.id))
 
   const columns = new Map()

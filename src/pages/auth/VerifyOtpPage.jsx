@@ -42,7 +42,11 @@ export default function VerifyOtpPage() {
     setLoading(true)
     setError('')
     try {
-      const { data } = await authApi.verifyOtp({ email, otp: code })
+      const { data } = await authApi.verifyOtp({
+              email,
+              code,
+              purpose: 'EMAIL_VERIFICATION',
+            })
       sessionStorage.removeItem(PENDING_EMAIL_KEY)
       const d = data.data
       if (d?.accessToken) {
