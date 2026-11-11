@@ -31,7 +31,7 @@ export default function ProfilePage() {
           <div className="flex flex-wrap items-center gap-2.5 mb-1.5">
             <h1 className="text-2xl font-semibold font-display text-chalk-50">{getFullName(user)}</h1>
             <span className="badge-plasma">{user?.role}</span>
-            {user?.hasActiveSubscription && <span className="badge-success"><Crown size={11} /> Premium</span>}
+            {user?.hasActiveSubscription && <span className="badge-success"><Crown size={11} /> Access </span>}
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-chalk-400">
             <span className="flex items-center gap-1.5"><Mail size={13} /> {user?.email}</span>
@@ -39,7 +39,7 @@ export default function ProfilePage() {
           </div>
         </div>
         {!user?.hasActiveSubscription && (
-          <Link to="/subscribe" className="btn-primary shrink-0"><Crown size={16} /> Go Premium</Link>
+          <Link to="/subscribe" className="btn-primary shrink-0"><Crown size={16} /> Get access </Link>
         )}
       </div>
 

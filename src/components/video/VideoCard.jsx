@@ -7,7 +7,7 @@ export default function VideoCard({ video }) {
 
   return (
     <Link to={`/videos/${video.id}`} className="group block animate-fade-in">
-      <div className="thumb-wrap video-overlay-wrap">
+      <div className="thumb-wrap">
         {video.thumbnailPath ? (
           <img
             src={getAssetUrl(video.thumbnailPath)}

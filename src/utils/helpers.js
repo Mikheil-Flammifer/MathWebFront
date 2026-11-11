@@ -1,4 +1,5 @@
 import { API_BASE_URL, DIFFICULTY_LEVELS } from './constants'
+import { parseServerDate } from './notificationHelpers'
 
 export const cn = (...classes) => classes.filter(Boolean).join(' ')
 
@@ -20,9 +21,10 @@ export const formatFileSize = (bytes) => {
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`
 }
 
-export const timeAgo = (dateString) => {
-  if (!dateString) return ''
-  const seconds = Math.floor((Date.now() - new Date(dateString)) / 1000)
+export const timeAgo = (value) => {
+  const date = parseServerDate(value)
+  if (!date) return ''
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
   if (seconds < 60) return 'just now'
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
@@ -31,11 +33,10 @@ export const timeAgo = (dateString) => {
   return `${Math.floor(seconds / 31536000)}y ago`
 }
 
-export const formatDate = (dateString) => {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  })
+export const formatDate = (value) => {
+  const date = parseServerDate(value)
+  if (!date) return ''
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 export const getDifficultyInfo = (level) =>

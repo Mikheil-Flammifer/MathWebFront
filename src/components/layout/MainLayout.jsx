@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import PageLoader from '../common/PageLoader'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import MobileNav from './MobileNav'
@@ -32,11 +33,11 @@ export default function MainLayout() {
   }, [mobileMenuOpen])
 
   return (
-    <div className="min-h-screen full-viewport-height">
+    <div className="full-viewport-height">
       <Sidebar mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
-      <div className="lg:pl-64 flex flex-col min-h-screen">
+       <div className="lg:pl-64 flex flex-col min-h-dvh">
         <Topbar onMobileMenuClick={() => setMobileMenuOpen(!mobileMenuOpen)} />
-        <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8 animate-fade-in">
+          <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 animate-fade-in">    
           {showMeError && (
             <div
               role="alert"
@@ -53,7 +54,9 @@ export default function MainLayout() {
               </button>
             </div>
           )}
-          <Outlet />
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       <MobileNav />

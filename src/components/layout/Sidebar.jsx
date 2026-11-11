@@ -124,20 +124,16 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
         {!user?.hasActiveSubscription && (
           <div className="p-3 border-t border-space-500">
             <div className="card-plasma">
-              <div className="flex items-center gap-2 text-plasma-300 mb-1.5">
-                <Sparkles size={15} />
-                <span className="text-sm font-semibold">Go Premium</span>
-              </div>
-              <p className="text-xs text-chalk-400 mb-3.5">
-                Unlock every video and quest for $2.49/month.
-              </p>
-              <Link
-                to="/subscribe"
-                className="btn-primary w-full py-2 touch-target no-zoom"
-                onClick={onMobileClose}
-              >
-                Upgrade
-              </Link>
+                <div className="flex items-center gap-2 text-plasma-300 mb-1.5">
+                  <Sparkles size={15} />
+                  <span className="text-sm font-semibold">Get full access</span>
+                </div>
+                <p className="text-xs text-chalk-400 mb-3.5">
+                  Unlock every video and quest with a one-time pass. No auto-renewal.
+                </p>
+                <Link to="/subscribe" className="btn-primary w-full py-2 touch-target no-zoom" onClick={onMobileClose}>
+                  See passes
+                </Link>
             </div>
           </div>
         )}

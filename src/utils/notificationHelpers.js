@@ -4,7 +4,8 @@ export function parseServerDate(value) {
   if (!value) return null
   const text = String(value)
   const hasZone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(text)
-  const date = new Date(hasZone ? text : text + 'Z')
+  const needsZ = text.includes('T') && !hasZone
+  const date = new Date(needsZ ? text + 'Z' : text)
   return Number.isNaN(date.getTime()) ? null : date
 }
 

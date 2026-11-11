@@ -30,11 +30,10 @@ export default function Topbar({ onMobileMenuClick }) {
   }
 
   return (
-    <header className="sticky top-0 z-30 h-16 glass border-b border-space-500 flex items-center gap-4 px-4 sm:px-6 lg:px-8 safe-area-inset-top">
-      {/* Mobile: Hamburger Menu */}
+    <header className="sticky top-0 z-30 h-[calc(4rem+env(safe-area-inset-top,0px))] glass border-b border-space-500 flex items-center gap-4 px-4 sm:px-6 lg:px-8 safe-area-inset-top">
       <button
         onClick={onMobileMenuClick}
-        className="lg:hidden p-2 rounded-lg hover:bg-space-600 transition-colors touch-target no-zoom"
+        className="lg:hidden p-2 rounded-lg hover:bg-space-600 transition-colors no-zoom"
         aria-label="Open menu"
       >
         <Menu size={24} className="text-chalk-200" />

@@ -6,8 +6,9 @@ import toast from 'react-hot-toast'
 import Avatar from '../common/Avatar'
 import { authApi } from '../../api/authApi'
 import useAuthStore from '../../store/authStore'
-import { API_BASE_URL, ROLES } from '../../utils/constants'
+import { ADMIN_DASHBOARD_URL, ROLES } from '../../utils/constants'
 import { getFullName } from '../../utils/helpers'
+
 
 export default function UserMenu() {
   const navigate = useNavigate()
@@ -74,12 +75,18 @@ export default function UserMenu() {
 
           <Link to="/profile" onClick={() => setOpen(false)} className={itemClass}><User size={16} /> Profile</Link>
           <Link to="/subscribe" onClick={() => setOpen(false)} className={itemClass}>
-            <Crown size={16} /> {user?.hasActiveSubscription ? 'Manage subscription' : 'Go Premium'}
+            <Crown size={16} /> {user?.hasActiveSubscription ? 'My access' : 'Get access'}
           </Link>
-          {user?.role === ROLES.ADMIN && (
-            <a href={`${API_BASE_URL}/admin/login`} className={itemClass}><ShieldCheck size={16} /> Admin panel</a>
-          )}
-
+              {user?.role === ROLES.ADMIN && ADMIN_DASHBOARD_URL && (
+                <a
+                  href={ADMIN_DASHBOARD_URL}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className={itemClass}
+                >
+                  <ShieldCheck size={16} /> Admin panel
+                </a>
+              )}
           <div className="my-1 border-t border-space-500" />
           <button onClick={handleLogout} className={`${itemClass} w-full hover:!text-red-400`}>
             <LogOut size={16} /> Sign out

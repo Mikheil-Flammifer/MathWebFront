@@ -10,6 +10,14 @@ import { checkSecureContext } from './utils/secureContext'
 
 checkSecureContext()
 
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault()
+  if (!sessionStorage.getItem('chunk_reloaded')) {
+    sessionStorage.setItem('chunk_reloaded', '1')
+    window.location.reload()
+  }
+})
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -19,6 +27,7 @@ const queryClient = new QueryClient({
     },
   },
 })
+
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <ErrorBoundary fullScreen>

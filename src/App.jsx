@@ -1,7 +1,9 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import useAuthStore from './store/authStore'
 import AdminRoute from './components/layout/AdminRoute'
 import ErrorBoundary from './components/common/ErrorBoundary'
+import PageLoader from './components/common/PageLoader'
 
 // Auth pages
 import LoginPage from './pages/auth/LoginPage'
@@ -10,30 +12,10 @@ import VerifyOtpPage from './pages/auth/VerifyOtpPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 
-// Admin pages
-import AdminQuestsPage from './pages/quest/AdminQuestsPage'
-import AdminQuestCreatePage from './pages/quest/AdminQuestCreatePage'
-import AdminQuestSettingsPage from './pages/quest/AdminQuestSettingsPage'
-import AdminProblemCreatePage from './pages/problem/AdminProblemCreatePage'
-import AdminProblemEditPage from './pages/problem/AdminProblemEditPage'
-import AdminVideoCreatePage from './pages/video/AdminVideoCreatePage'
-import AdminVideoEditPage from './pages/video/AdminVideoEditPage'
-import AdminVideosPage from './pages/video/AdminVideosPage'
-import AdminCategoriesPage from './pages/category/AdminCategoriesPage'
-import AdminUsersPage from './pages/user/AdminUsersPage'
-
-
-// Main pages
+// Eager main pages
 import HomePage from './pages/home/HomePage'
-import VideoPlayerPage from './pages/video/VideoPlayerPage'
-import QuestMapPage from './pages/quest/QuestMapPage'
-import QuestDetailPage from './pages/quest/QuestDetailPage'
-import QuestMapEditorPage from './pages/quest/QuestMapEditorPage'
-import ProblemPage from './pages/problem/ProblemPage'
-import ProfilePage from './pages/profile/ProfilePage'
 import SubscriptionPage from './pages/subscription/SubscriptionPage'
-import ProgressPage from './pages/progress/ProgressPage'
-import MistakesPage from './pages/progress/MistakesPage'
+import ProfilePage from './pages/profile/ProfilePage'
 import NotificationsPage from './pages/notification/NotificationsPage'
 
 // Public pages
@@ -47,6 +29,25 @@ import NotFoundPage from './pages/error/NotFoundPage'
 import MainLayout from './components/layout/MainLayout'
 import PublicLayout from './components/layout/PublicLayout'
 import StaffRoute from './components/layout/StaffRoute'
+
+// Lazy pages (heavy libraries or staff/admin only)
+const VideoPlayerPage = lazy(() => import('./pages/video/VideoPlayerPage'))          // react-player
+const ProblemPage = lazy(() => import('./pages/problem/ProblemPage'))                // KaTeX
+const MistakesPage = lazy(() => import('./pages/progress/MistakesPage'))             // KaTeX
+const ProgressPage = lazy(() => import('./pages/progress/ProgressPage'))
+const QuestMapPage = lazy(() => import('./pages/quest/QuestMapPage'))
+const QuestDetailPage = lazy(() => import('./pages/quest/QuestDetailPage'))
+const QuestMapEditorPage = lazy(() => import('./pages/quest/QuestMapEditorPage'))
+const AdminQuestsPage = lazy(() => import('./pages/quest/AdminQuestsPage'))
+const AdminQuestCreatePage = lazy(() => import('./pages/quest/AdminQuestCreatePage'))
+const AdminQuestSettingsPage = lazy(() => import('./pages/quest/AdminQuestSettingsPage'))
+const AdminProblemCreatePage = lazy(() => import('./pages/problem/AdminProblemCreatePage')) // MathLive
+const AdminProblemEditPage = lazy(() => import('./pages/problem/AdminProblemEditPage'))     // MathLive
+const AdminVideosPage = lazy(() => import('./pages/video/AdminVideosPage'))
+const AdminVideoCreatePage = lazy(() => import('./pages/video/AdminVideoCreatePage'))
+const AdminVideoEditPage = lazy(() => import('./pages/video/AdminVideoEditPage'))
+const AdminCategoriesPage = lazy(() => import('./pages/category/AdminCategoriesPage'))
+const AdminUsersPage = lazy(() => import('./pages/user/AdminUsersPage'))
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -81,6 +82,7 @@ export default function App() {
   return (
     // resetKey: navigating to another URL clears a caught error
     <ErrorBoundary resetKey={location.pathname}>
+        <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public pages with header and footer, open to everyone */}
         <Route element={<PublicLayout />}>
@@ -138,17 +140,19 @@ export default function App() {
             <Route path="/admin/videos/new" element={<AdminVideoCreatePage />} />
             <Route path="/admin/videos/:id/edit" element={<AdminVideoEditPage />} />
           </Route>
+
+          {/* Admin only */}
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+          </Route>
         </Route>
 
-        {/* Admin only */}
-        <Route element={<AdminRoute />}>
-          <Route path="/admin/categories" element={<AdminCategoriesPage />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-        </Route>
 
         {/* Catch all */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </Suspense>
     </ErrorBoundary>
   )
 }
