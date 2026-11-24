@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { captureError } from '../../observability/sentry'
 
 export default class ErrorBoundary extends Component {
   state = { error: null }
@@ -10,6 +11,7 @@ export default class ErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     console.error('Render crash:', error, info.componentStack)
+    captureError(error, { componentStack: info.componentStack })
   }
 
   componentDidUpdate(prevProps) {

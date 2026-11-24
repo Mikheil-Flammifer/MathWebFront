@@ -7,8 +7,38 @@ import App from './App.jsx'
 import './index.css'
 import ErrorBoundary from './components/common/ErrorBoundary.jsx'
 import { checkSecureContext } from './utils/secureContext'
+import { initSentry } from './observability/sentry'
 
 checkSecureContext()
+initSentry()
+
+// The previous service worker cached every API request, including requests
+// made with an authenticated cookie. Retire it rather than risk serving one
+// account another account's cached data. A future PWA implementation must use
+// a generated, static-asset-only precache and must never cache /api requests.
+function retireLegacyServiceWorker() {
+  if (!('serviceWorker' in navigator)) return
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch(() => {})
+
+    if ('caches' in window) {
+      caches
+        .keys()
+        .then((keys) => Promise.all(
+          keys
+            .filter((key) => key.startsWith('mathweb-'))
+            .map((key) => caches.delete(key))
+        ))
+        .catch(() => {})
+    }
+  })
+}
+
+retireLegacyServiceWorker()
 
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault()
